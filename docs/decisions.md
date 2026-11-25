@@ -16,3 +16,7 @@ This keeps every number traceable and reproducible, instead of depending on an L
 
 Currently a "high" AI Act level only lowers the priority score through the risk term, it does not block selection.
 Revisit at step 1.5: consider hard-excluding "high" risk cases from wave 1 instead of just penalizing them.
+
+## Gain normalization: log min-max
+
+Gains span two orders of magnitude (96 h to 9,000 h/year in the demo); linear min-max let a single outlier crush all other cases, while rank-based scoring lost the magnitude of differences.
