@@ -244,10 +244,11 @@ def score_use_cases(
 
     allowed, excluded = split_prohibited(use_cases)
 
-    gains = [
-        annual_time_value(processes[uc.process_name], hourly_cost) * uc.pct_time_saved
-        for uc in allowed
-    ]
+    gains = []
+    for uc in allowed:
+        if uc.process_name not in processes:
+            raise ValueError(f"Unknown process_name '{uc.process_name}': no matching process was provided")
+        gains.append(annual_time_value(processes[uc.process_name], hourly_cost) * uc.pct_time_saved)
     gain_scores = normalize_log_minmax(gains)
 
     unranked: list[tuple[UseCase, float, Scores]] = []
