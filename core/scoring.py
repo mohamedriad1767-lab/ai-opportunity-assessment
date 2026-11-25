@@ -6,7 +6,7 @@ no globals, and no printing.
 
 import math
 
-from core.models import AIActLevel, GDPRLevel, Process, UseCase
+from core.models import AIActLevel, GDPRLevel, Process, ScoredUseCase, Scores, UseCase
 
 MONTHS_PER_YEAR = 12
 MINUTES_PER_HOUR = 60
@@ -139,13 +139,15 @@ def off_the_shelf_to_100(off_the_shelf: bool) -> float:
 def value_score(
     use_case: UseCase,
     gain_score: float,
-    weights: dict[str, dict[str, float]] = DEFAULT_WEIGHTS,
+    weights: dict[str, dict[str, float]] | None = None,
 ) -> float:
     """Compute the value score (0-100) of a use case.
 
     gain_score is the already-normalized 0-100 gain (e.g. from normalize_log_minmax).
     Combines gain, quality_impact and strategic_alignment using weights["value"].
+    weights defaults to DEFAULT_WEIGHTS and is never mutated.
     """
+    weights = weights if weights is not None else DEFAULT_WEIGHTS
     validate_weights(weights)
     w = weights["value"]
     quality_100 = note_to_100(use_case.quality_impact)
@@ -156,13 +158,15 @@ def value_score(
 
 def feasibility_score(
     use_case: UseCase,
-    weights: dict[str, dict[str, float]] = DEFAULT_WEIGHTS,
+    weights: dict[str, dict[str, float]] | None = None,
 ) -> float:
     """Compute the feasibility score (0-100) of a use case.
 
     Combines data_quality, technical_complexity (inverted: 5 -> 0) and
     off_the_shelf using weights["feasibility"].
+    weights defaults to DEFAULT_WEIGHTS and is never mutated.
     """
+    weights = weights if weights is not None else DEFAULT_WEIGHTS
     validate_weights(weights)
     w = weights["feasibility"]
     data_100 = note_to_100(use_case.data_quality)
@@ -174,12 +178,14 @@ def feasibility_score(
 
 def risk_score(
     use_case: UseCase,
-    weights: dict[str, dict[str, float]] = DEFAULT_WEIGHTS,
+    weights: dict[str, dict[str, float]] | None = None,
 ) -> float:
     """Compute the risk score (0-100) of a use case.
 
     Combines ai_act, gdpr and adoption_risk using weights["risk"].
+    weights defaults to DEFAULT_WEIGHTS and is never mutated.
     """
+    weights = weights if weights is not None else DEFAULT_WEIGHTS
     validate_weights(weights)
     w = weights["risk"]
     ai_act_100 = ai_act_to_100(use_case.ai_act)
@@ -187,3 +193,76 @@ def risk_score(
     adoption_100 = note_to_100(use_case.adoption_risk)
     score = w["ai_act"] * ai_act_100 + w["gdpr"] * gdpr_100 + w["adoption"] * adoption_100
     return round(score, 1)
+
+
+def priority_score(
+    value: float,
+    feasibility: float,
+    risk: float,
+    weights: dict[str, dict[str, float]] | None = None,
+) -> float:
+    """Compute the overall priority score (0-100) from the three axes.
+
+    priority = w_value * value + w_feasibility * feasibility + w_risk * (100 - risk),
+    using weights["priority"]. weights defaults to DEFAULT_WEIGHTS and is never mutated.
+    """
+    weights = weights if weights is not None else DEFAULT_WEIGHTS
+    validate_weights(weights)
+    w = weights["priority"]
+    score = w["value"] * value + w["feasibility"] * feasibility + w["risk"] * (100 - risk)
+    return round(score, 1)
+
+
+def split_prohibited(use_cases: list[UseCase]) -> tuple[list[UseCase], list[UseCase]]:
+    """Split use cases into (allowed, excluded), where excluded have ai_act == prohibited."""
+    allowed = [uc for uc in use_cases if uc.ai_act != AIActLevel.PROHIBITED]
+    excluded = [uc for uc in use_cases if uc.ai_act == AIActLevel.PROHIBITED]
+    return allowed, excluded
+
+
+def score_use_cases(
+    use_cases: list[UseCase],
+    processes: dict[str, Process],
+    hourly_cost: float,
+    weights: dict[str, dict[str, float]] | None = None,
+) -> tuple[list[ScoredUseCase], list[UseCase]]:
+    """Score and rank a portfolio of use cases, filtering out prohibited ones.
+
+    Order of operations:
+    (a) exclude prohibited use cases first (they are never scored or ranked);
+    (b) compute each gain = annual_time_value(process, hourly_cost) * pct_time_saved;
+    (c) normalize gains with normalize_log_minmax, over the allowed use cases only,
+        so a prohibited outlier cannot distort the min/max of the remaining portfolio;
+    (d) compute value, feasibility, risk and priority for each allowed use case;
+    (e) sort by priority descending and assign rank 1..n.
+
+    weights defaults to DEFAULT_WEIGHTS and is never mutated.
+    Returns (scored_use_cases, excluded_use_cases).
+    """
+    weights = weights if weights is not None else DEFAULT_WEIGHTS
+    validate_weights(weights)
+
+    allowed, excluded = split_prohibited(use_cases)
+
+    gains = [
+        annual_time_value(processes[uc.process_name], hourly_cost) * uc.pct_time_saved
+        for uc in allowed
+    ]
+    gain_scores = normalize_log_minmax(gains)
+
+    unranked: list[tuple[UseCase, float, Scores]] = []
+    for uc, gain, gain_score in zip(allowed, gains, gain_scores):
+        value = value_score(uc, gain_score, weights)
+        feasibility = feasibility_score(uc, weights)
+        risk = risk_score(uc, weights)
+        priority = priority_score(value, feasibility, risk, weights)
+        scores = Scores(value=value, feasibility=feasibility, risk=risk, priority=priority)
+        unranked.append((uc, gain, scores))
+
+    unranked.sort(key=lambda item: item[2].priority, reverse=True)
+
+    scored = [
+        ScoredUseCase(use_case=uc, annual_gain_eur=gain, scores=scores, rank=rank)
+        for rank, (uc, gain, scores) in enumerate(unranked, start=1)
+    ]
+    return scored, excluded

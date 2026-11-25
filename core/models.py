@@ -95,3 +95,12 @@ class Scores(BaseModel):
     feasibility: float = Field(ge=0, le=100)
     risk: float = Field(ge=0, le=100)
     priority: float = Field(ge=0, le=100)
+
+
+class ScoredUseCase(BaseModel):
+    """A use case bundled with its computed gain, scores, and portfolio rank."""
+
+    use_case: UseCase
+    annual_gain_eur: float = Field(ge=0)
+    scores: Scores
+    rank: int = Field(ge=1)
