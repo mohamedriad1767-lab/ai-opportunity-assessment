@@ -1,0 +1,13 @@
+name,team,volume_per_month,minutes_per_occurrence,pain_points,data_used
+Order entry,Sales Admin,21000,4,"Manual data entry from emails and faxes; frequent transcription errors; no real-time stock check at entry","Customer email orders; EDI messages; ERP order forms; product catalog"
+Quote generation,Sales Admin,800,20,"Repetitive pricing lookups; manual discount approval emails; slow turnaround on large RFQs","Price lists; customer contract terms; historical quotes; margin targets"
+Supplier invoice processing,Accounts Payable,3500,8,"Manual three-way matching; duplicate invoice risk; delayed approvals","Supplier invoices; purchase orders; goods receipt notes; ERP payment terms"
+Purchase order creation,Purchasing,1800,12,"Manual reorder point checks; fragmented supplier catalogs; email-based approvals","Inventory levels; sales forecasts; supplier catalogs; lead times"
+Pick and pack order fulfillment,Warehouse/Logistics,15000,3,"Walking time between zones; manual pick list printing; occasional mis-picks","Warehouse management system; pick lists; stock locations; carrier labels"
+Customer complaint handling,Customer Service,900,18,"Long resolution time; manual root-cause lookup across systems; inconsistent follow-up","CRM tickets; order history; delivery tracking; product return data"
+Order status inquiries,Customer Service,5000,5,"High call volume for repetitive status checks; agents switching between systems; long hold times","Order management system; carrier tracking feeds; CRM contact history"
+CV screening for open positions,HR,600,10,"High volume of applications per role; inconsistent screening criteria; slow time-to-shortlist","Candidate CVs; job descriptions; applicant tracking system records; demographic data"
+Monthly management reporting consolidation,Finance/Controlling,1,1800,"Manual Excel consolidation across entities; version control issues; late month-end close","ERP general ledger extracts; entity-level P&L files; budget data; FX rates"
+Dunning letters and collection calls,Credit & Collections,1200,15,"Manual prioritization of overdue accounts; repetitive letter drafting; inconsistent follow-up cadence","Accounts receivable aging; customer payment history; credit limits; dispute notes"
+Campaign performance reporting,Marketing,2,240,"Manual export from multiple ad platforms; recurring spreadsheet formatting; delayed insights","Ad platform exports; CRM lead data; website analytics; campaign budgets"
+Password reset and access requests,IT Support,2000,6,"Repetitive low-complexity tickets; after-hours request backlog; manual identity verification","Active Directory logs; ticketing system records; employee directory"
