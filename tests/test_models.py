@@ -38,8 +38,15 @@ def test_batch_with_pct_sum_above_0_8_is_rejected():
         )
 
 
-def test_batch_with_zero_use_cases_is_rejected():
-    """A batch with 0 use cases is rejected."""
+def test_zero_use_cases_with_no_fit_reason_is_valid():
+    """A batch with 0 use cases and a no_fit_reason is accepted."""
+    batch = ProposalBatch(use_cases=[], no_fit_reason="This process is purely physical.")
+    assert batch.use_cases == []
+    assert batch.no_fit_reason == "This process is purely physical."
+
+
+def test_zero_use_cases_without_no_fit_reason_is_rejected():
+    """A batch with 0 use cases and no no_fit_reason is rejected."""
     with pytest.raises(ValidationError):
         ProposalBatch(use_cases=[])
 
