@@ -39,7 +39,14 @@ under the EU AI Act.
 Output format: respond with raw JSON only. No markdown code fences, no text \
 before or after the JSON. The response must be a JSON array of objects, each \
 with exactly these keys: type, description (one sentence), justification (one \
-to two sentences linking explicitly to the pain points), pct_time_saved."""
+to two sentences linking explicitly to the pain points), pct_time_saved.
+
+Before answering, silently check your list: (1) no use case performs a step \
+already performed by another use case in the list — if an agent would repeat \
+another case's steps, drop one of them; (2) the sum of pct_time_saved is <= \
+0.8; (3) each type is the simplest that fits (a tool that only retrieves and \
+summarizes information for a human is an 'assistant', not an 'agent'). If any \
+check fails, revise before answering."""
 
 WORKED_EXAMPLE_PROMPT = """Context:
 - Company: ExampleCo, sector: Business Services, 500 employees
