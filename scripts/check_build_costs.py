@@ -9,6 +9,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from core.assumptions import Assumptions, build_cost_eur
+from core.loader import load_processes
 from core.models import UseCase
 
 
@@ -19,13 +20,15 @@ def main() -> None:
         raw_use_cases = json.load(f)
     use_cases = [UseCase(**item) for item in raw_use_cases]
 
+    processes = {p.name: p for p in load_processes("data/demo_company.csv")}
     assumptions = Assumptions()
 
     header = f"{'process':<45} {'complexity':>10} {'off_the_shelf':>13} {'build_cost_eur':>15}"
     print(header)
     print("-" * len(header))
     for uc in use_cases:
-        cost = build_cost_eur(uc, assumptions)
+        process = processes[uc.process_name]
+        cost = build_cost_eur(uc, process, assumptions)
         print(
             f"{uc.process_name:<45} {uc.technical_complexity:>10} "
             f"{str(uc.off_the_shelf):>13} {round(cost):>15}"

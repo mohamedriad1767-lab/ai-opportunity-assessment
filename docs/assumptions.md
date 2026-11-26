@@ -15,10 +15,15 @@ them) before any number derived from them goes into a report.
 | build_days_by_complexity[4] | 35 | days | Complex build: multiple systems, non-trivial custom logic or fine-tuning. | Yes |
 | build_days_by_complexity[5] | 60 | days | Very complex build: novel engineering, heavy integration, or a custom model. | Yes |
 | off_the_shelf_build_factor | 0.4 | fraction | An "off-the-shelf" tool still needs integration, configuration, and testing; assumed to take ~40% of a custom build at the same complexity level, not 0%. | Yes |
+| integration_days_per_data_source | 3 | days/data source | Each additional data source (system, document type, API) a process touches adds its own integration work, on top of the base complexity build days. | Yes |
 | annual_license_eur_off_the_shelf | 6000 | EUR/year | A placeholder recurring license cost for an off-the-shelf tool, in the absence of a real vendor quote. | Yes |
 | llm_cost_per_occurrence_eur | 0.01 | EUR/occurrence | A rough per-call API cost for a custom LLM-based use case at typical prompt/output sizes; actual cost depends heavily on the model and token volume. | Yes |
 | maintenance_pct_of_build | 0.15 | fraction/year | Ongoing maintenance (bug fixes, monitoring, small adjustments), assumed as a recurring fraction of the one-off build cost — a common software rule of thumb. | Yes |
-| change_management_pct_of_build | 0.25 | fraction, one-off | Training, communication, and process redesign needed to actually adopt the use case, as a fraction of build cost; change management is usually under-budgeted. | Yes |
+| change_management_days_by_adoption_risk[1] | 2 | days | Minimal change management: the use case barely changes how people work. | Yes |
+| change_management_days_by_adoption_risk[2] | 5 | days | Light change management: a small workflow adjustment, light communication. | Yes |
+| change_management_days_by_adoption_risk[3] | 10 | days | Moderate change management: training plus structured communication. | Yes |
+| change_management_days_by_adoption_risk[4] | 20 | days | Heavy change management: significant workflow change, likely resistance to manage. | Yes |
+| change_management_days_by_adoption_risk[5] | 30 | days | Very heavy change management: a major disruption to how a team works, needing sustained support. | Yes |
 | adoption_rates.pessimistic | 0.40 | fraction | Share of the eligible volume actually processed by the use case in a slow-adoption scenario. | Yes |
 | adoption_rates.base | 0.65 | fraction | Share of the eligible volume actually processed by the use case in the expected scenario. | Yes |
 | adoption_rates.optimistic | 0.85 | fraction | Share of the eligible volume actually processed by the use case in a fast-adoption scenario; never 100%, since some volume always stays manual (exceptions, edge cases). | Yes |
