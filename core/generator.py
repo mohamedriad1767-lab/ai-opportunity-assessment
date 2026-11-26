@@ -6,6 +6,7 @@ GenerationError explaining why generation failed.
 """
 
 import logging
+import re
 import time
 
 import anthropic
@@ -23,6 +24,20 @@ CLIENT_TIMEOUT_SECONDS = 30
 MAX_TRANSIENT_RETRIES = 2
 TRANSIENT_RETRY_DELAYS_SECONDS = [1, 2]
 MAX_REPAIR_ATTEMPTS = 2
+
+# Prompt instructions are probabilistic; what code can check, code checks.
+# A no_fit_reason that cites regulatory risk is rejected regardless of what
+# the system prompt says, since the scoring layer (not the generator) is the
+# place risk is handled.
+RISK_REFUSAL_PATTERN = re.compile(
+    r"ai act|high-risk|high risk|gdpr|legal|compliance|annex iii|regulat",
+    re.IGNORECASE,
+)
+RISK_REFUSAL_REPAIR_MESSAGE = (
+    "Regulatory risk is not a valid reason to return zero use cases. Propose "
+    "the use cases and classify their ai_act and gdpr levels honestly; the "
+    "scoring layer handles risk."
+)
 
 
 class GenerationError(Exception):
@@ -47,7 +62,9 @@ def _build_tool() -> dict:
     }
 
 
-def _call_model(client: anthropic.Anthropic, messages: list[dict], sleep) -> anthropic.types.Message:
+def _call_model(
+    client: anthropic.Anthropic, messages: list[dict], sleep, model: str
+) -> anthropic.types.Message:
     """Call the model, retrying transient errors with exponential backoff.
 
     Permanent errors (authentication, bad request, other 4xx) raise
@@ -58,7 +75,7 @@ def _call_model(client: anthropic.Anthropic, messages: list[dict], sleep) -> ant
     for attempt in range(MAX_TRANSIENT_RETRIES + 1):
         try:
             return client.messages.create(
-                model=MODEL_NAME,
+                model=model,
                 max_tokens=MAX_TOKENS,
                 system=SYSTEM_PROMPT,
                 tools=[_build_tool()],
@@ -151,6 +168,13 @@ def _record_usage(response: anthropic.types.Message, stats_accumulator: dict) ->
         stats_accumulator["output_tokens"] += getattr(usage, "output_tokens", 0) or 0
 
 
+def _mentions_risk_or_compliance(no_fit_reason: str | None) -> bool:
+    """Return True if a no_fit_reason cites EU AI Act / GDPR / legal / compliance grounds."""
+    if not no_fit_reason:
+        return False
+    return bool(RISK_REFUSAL_PATTERN.search(no_fit_reason))
+
+
 def _fill_stats(stats: dict, stats_accumulator: dict, first_attempt_valid: bool) -> None:
     """Write the final stats_accumulator values into the caller's stats dict."""
     stats["api_calls"] = stats_accumulator["api_calls"]
@@ -166,17 +190,22 @@ def generate_use_cases(
     client: anthropic.Anthropic,
     sleep=time.sleep,
     stats: dict | None = None,
+    model: str = MODEL_NAME,
 ) -> GenerationResult:
     """Ask the model for 0-3 AI use cases for a process, via forced tool use.
 
     Retries transient API errors with backoff (see _call_model), and repairs
-    malformed model output (missing tool_use, max_tokens cutoff, or schema
-    violations) by feeding the error back to the model, up to
-    MAX_REPAIR_ATTEMPTS times. Raises GenerationError if generation still
-    fails after that.
+    malformed model output (missing tool_use, max_tokens cutoff, schema
+    violations, or a no_fit_reason that cites regulatory risk instead of a
+    genuine lack of information-processing pain point) by feeding the error
+    back to the model, up to MAX_REPAIR_ATTEMPTS times. Raises GenerationError
+    if generation still fails after that.
 
     The returned GenerationResult always carries no_fit_reason alongside
     use_cases, so a "no good AI fit" answer is never silently dropped.
+
+    model defaults to MODEL_NAME but can be overridden, e.g. to compare
+    generator models without editing core/config.py.
 
     If stats is given, it is filled with: api_calls, repair_attempts,
     first_attempt_valid (bool), input_tokens, output_tokens (summed across
@@ -187,7 +216,7 @@ def generate_use_cases(
     stats_accumulator = {"api_calls": 0, "repair_attempts": 0, "input_tokens": 0, "output_tokens": 0}
 
     for repair_attempt in range(MAX_REPAIR_ATTEMPTS + 1):
-        response = _call_model(client, messages, sleep)
+        response = _call_model(client, messages, sleep, model)
         stats_accumulator["api_calls"] += 1
         _record_usage(response, stats_accumulator)
         tool_use_block = _find_tool_use_block(response)
@@ -204,12 +233,15 @@ def generate_use_cases(
             except ValidationError as exc:
                 last_error_text = str(exc)
             else:
-                if stats is not None:
-                    _fill_stats(stats, stats_accumulator, first_attempt_valid=repair_attempt == 0)
-                return GenerationResult(
-                    use_cases=to_use_cases(batch, process.name),
-                    no_fit_reason=batch.no_fit_reason,
-                )
+                if not batch.use_cases and _mentions_risk_or_compliance(batch.no_fit_reason):
+                    last_error_text = RISK_REFUSAL_REPAIR_MESSAGE
+                else:
+                    if stats is not None:
+                        _fill_stats(stats, stats_accumulator, first_attempt_valid=repair_attempt == 0)
+                    return GenerationResult(
+                        use_cases=to_use_cases(batch, process.name),
+                        no_fit_reason=batch.no_fit_reason,
+                    )
 
         logger.warning(
             "Invalid generation output on attempt %d/%d: %s",

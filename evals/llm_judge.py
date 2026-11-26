@@ -6,6 +6,7 @@ backoff; permanent errors raise immediately), kept local to this script
 since the judge uses its own model, tool, and schema.
 """
 
+import argparse
 import csv
 import json
 import logging
@@ -26,8 +27,6 @@ from core.loader import load_processes
 from core.models import Process
 from core.prompts import PROMPT_VERSION
 
-GRADING_PATH = f"evals/grading_{PROMPT_VERSION}.csv"
-JUDGE_OUTPUT_PATH = f"evals/grading_{PROMPT_VERSION}_judge.csv"
 RESULTS_PATH_TEMPLATE = "evals/results/{prompt_version}_{model_name}.jsonl"
 EVAL_PROCESSES_PATH = "evals/eval_processes.csv"
 
@@ -187,6 +186,29 @@ def load_results_by_process(model_name: str) -> dict[str, list[dict]]:
     return results_by_process
 
 
+def resolve_grading_path(model: str) -> str:
+    """Find the grading CSV for this prompt version and model.
+
+    Prefers the model-aware naming (evals/grading_{version}_{model}.csv);
+    falls back to the older model-less naming used before multiple models
+    were compared under the same prompt version.
+    """
+    model_aware_path = f"evals/grading_{PROMPT_VERSION}_{model}.csv"
+    if os.path.exists(model_aware_path):
+        return model_aware_path
+    return f"evals/grading_{PROMPT_VERSION}.csv"
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Judge a generation grading sheet.")
+    parser.add_argument(
+        "--model",
+        default=MODEL_NAME,
+        help=f"Generator model whose grading sheet to judge (default: {MODEL_NAME})",
+    )
+    return parser.parse_args()
+
+
 def main() -> None:
     sys.stdout.reconfigure(encoding="utf-8")
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
@@ -196,11 +218,16 @@ def main() -> None:
         print("Error: ANTHROPIC_API_KEY is not set. Add it to your .env file and try again.")
         sys.exit(1)
 
+    args = parse_args()
+    model = args.model
+    grading_path = resolve_grading_path(model)
+    judge_output_path = f"evals/grading_{PROMPT_VERSION}_{model}_judge.csv"
+
     client = anthropic.Anthropic(api_key=api_key, timeout=CLIENT_TIMEOUT_SECONDS, max_retries=0)
     processes = {p.name: p for p in load_processes(EVAL_PROCESSES_PATH)}
-    results_by_process = load_results_by_process(MODEL_NAME)
+    results_by_process = load_results_by_process(model)
 
-    with open(GRADING_PATH, encoding="utf-8", newline="") as f:
+    with open(grading_path, encoding="utf-8", newline="") as f:
         grading_rows = list(csv.DictReader(f))
 
     judge_rows = []
@@ -234,12 +261,12 @@ def main() -> None:
         "judge_ai_act_correct",
         "judge_comment",
     ]
-    with open(JUDGE_OUTPUT_PATH, "w", encoding="utf-8", newline="") as f:
+    with open(judge_output_path, "w", encoding="utf-8", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerows(judge_rows)
 
-    print(f"\nWrote {len(judge_rows)} judged rows to {JUDGE_OUTPUT_PATH}")
+    print(f"\nWrote {len(judge_rows)} judged rows to {judge_output_path}")
 
 
 if __name__ == "__main__":

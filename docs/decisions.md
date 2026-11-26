@@ -34,3 +34,14 @@ The prompt-only fix did NOT fully work on claude-haiku-4-5: "Annual performance 
 ## The LLM may say "no good AI fit" but never for risk reasons
 
 The LLM may say a process is not an AI fit, but never declines for risk reasons: risk is scored by rules, so a high-risk case stays visible to the client with its penalty.
+
+## Code guard against risk-worded no_fit_reason (v4.2)
+
+Prompt instructions are probabilistic; what code can check, code checks. The v4.1 prompt forbade declining for EU AI Act/GDPR risk, but claude-haiku-4-5 still did it: "Annual performance review drafting and calibration" came back as a 0-use-case no-fit answer explicitly citing "EU AI Act HIGH-RISK territory (Annex III, biometric categorisation for performance monitoring)" as the reason.
+That citation is also a hallucinated legal basis: performance review drafting has nothing to do with biometric categorisation, Annex III lists worker-performance evaluation as its own separate high-risk category. A model confidently inventing the wrong Annex III clause to justify a refusal is direct evidence that compliance judgments must never rely on LLM free text — core/generator.py now regex-matches no_fit_reason for risk/compliance wording (case-insensitive: "ai act", "high-risk", "gdpr", "legal", "compliance", "annex iii", "regulat", etc.) and forces a repair turn instead of trusting the model's stated reasoning.
+Measured on the same 10-process eval set, holding the model fixed at claude-haiku-4-5: v4.1 -> v4.2 no-fit accuracy 90% -> 100% (the guard converted the risk-based performance-review refusal into a correctly-labeled high-risk use case), AI Act error rate 16.67% -> 10.53%, overlap rate 11.11% -> 10.53%.
+
+## Generator model kept: claude-haiku-4-5, not claude-haiku-5-5
+
+Compared v4.2 on claude-haiku-4-5 vs the newest available Haiku, claude-haiku-5-5, with the prompt and code guard both held fixed (one-variable-at-a-time). claude-haiku-5-5 scored better on judge relevance (4.63 -> 4.71), overlap rate (10.53% -> 4.76%), and AI Act error rate (10.53% -> 9.52%), but its no-fit accuracy regressed (100% -> 90%): it proposed use cases for "Forklift preventive maintenance", the deliberately physical no-fit test case, where claude-haiku-4-5 correctly returned zero. It is also not cheaper — note the cost figures for claude-haiku-5-5 reuse claude-haiku-4-5's per-token prices as a placeholder (its real pricing was not available to verify) and should be re-checked before this decision is revisited on cost grounds.
+Given the no-fit mechanism's entire purpose is to catch exactly the kind of process claude-haiku-5-5 got wrong, and its real cost is unverified, claude-haiku-4-5 stays the generator model. Revisit if claude-haiku-5-5's no-fit accuracy improves on a larger eval set or its pricing is confirmed favorable.

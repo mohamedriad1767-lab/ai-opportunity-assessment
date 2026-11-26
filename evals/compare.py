@@ -1,4 +1,4 @@
-"""Compare prompt-version evaluation runs (v3, v4, v4.1) side by side."""
+"""Compare (prompt version, generator model) evaluation runs side by side."""
 
 import csv
 import json
@@ -11,19 +11,42 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from core.config import MODEL_NAME, PRICE_INPUT_PER_MTOK_USD, PRICE_OUTPUT_PER_MTOK_USD
 
-VERSIONS = ["v3", "v4", "v4.1"]
+# One variable changes between consecutive runs:
+# v3 -> v4.1 : prompt changes (no-fit option, AI Act guidance, overlap rule)
+# v4.1 -> v4.2 (same model): the code guard against risk-worded no_fit_reason
+# v4.2/4.5 -> v4.2/<new haiku>: the generator model, prompt and code held fixed
+RUNS = [
+    ("v3", "claude-haiku-4-5"),
+    ("v4.1", "claude-haiku-4-5"),
+    ("v4.2", "claude-haiku-4-5"),
+    ("v4.2", "claude-haiku-5-5"),
+]
 EVAL_PROCESSES_PATH = "evals/eval_processes.csv"
 TARGET_PROCESS_FOR_AI_ACT_DUMP = "Annual performance review drafting and calibration"
 
 
-def load_results(version: str) -> list[dict]:
-    path = f"evals/results/{version}_{MODEL_NAME}.jsonl"
+def model_label(model: str) -> str:
+    """Short display label for a model id, e.g. claude-haiku-4-5 -> 4.5."""
+    return model.removeprefix("claude-haiku-").replace("-", ".")
+
+
+def run_label(version: str, model: str) -> str:
+    return f"{version}/{model_label(model)}"
+
+
+def load_results(version: str, model: str) -> list[dict]:
+    path = f"evals/results/{version}_{model}.jsonl"
     with open(path, encoding="utf-8") as f:
         return [json.loads(line) for line in f if line.strip()]
 
 
-def load_judge_rows(version: str) -> list[dict]:
-    path = f"evals/grading_{version}_judge.csv"
+def load_judge_rows(version: str, model: str) -> list[dict]:
+    """Load judge rows, preferring the model-aware filename and falling back
+    to the older model-less naming used before multiple models were compared
+    under the same prompt version.
+    """
+    model_aware_path = f"evals/grading_{version}_{model}_judge.csv"
+    path = model_aware_path if os.path.exists(model_aware_path) else f"evals/grading_{version}_judge.csv"
     with open(path, encoding="utf-8", newline="") as f:
         return list(csv.DictReader(f))
 
@@ -48,10 +71,10 @@ def compute_no_fit_accuracy(results: list[dict], expected_fit: dict[str, str]) -
     return matches / len(decidable)
 
 
-def compute_metrics(version: str, expected_fit: dict[str, str]) -> dict:
-    """Compute the comparison metrics for one prompt version."""
-    results = load_results(version)
-    judge_rows = load_judge_rows(version)
+def compute_metrics(version: str, model: str, expected_fit: dict[str, str]) -> dict:
+    """Compute the comparison metrics for one (version, model) run."""
+    results = load_results(version, model)
+    judge_rows = load_judge_rows(version, model)
 
     total_processes = len(results)
     successful = [r for r in results if r["error"] is None]
@@ -119,27 +142,28 @@ def _get_no_fit_reason(record: dict) -> str | None:
     return record.get("no_fit_reason") or (record.get("stats") or {}).get("no_fit_reason")
 
 
-def print_no_fit_reasons(version: str) -> None:
-    """Print the no_fit_reason of every no-fit answer for one version."""
-    results = load_results(version)
+def print_no_fit_reasons(version: str, model: str) -> None:
+    """Print the no_fit_reason of every no-fit answer for one run."""
+    results = load_results(version, model)
     no_fit_results = [r for r in results if r["error"] is None and len(r["use_cases"]) == 0]
-    print(f"\n--- {version}: no-fit reasons ({len(no_fit_results)}) ---")
+    print(f"\n--- {run_label(version, model)}: no-fit reasons ({len(no_fit_results)}) ---")
     if not no_fit_results:
         print("(none)")
     for r in no_fit_results:
         print(f"- {r['process']}: {_get_no_fit_reason(r)}")
 
 
-def print_ai_act_levels_for_target_process(version: str) -> None:
-    """Print the ai_act level of every use case generated for the target process."""
-    results = load_results(version)
+def print_ai_act_levels_for_target_process(version: str, model: str) -> None:
+    """Print the number of use cases and ai_act level of each, for the target process."""
+    results = load_results(version, model)
     record = next((r for r in results if r["process"] == TARGET_PROCESS_FOR_AI_ACT_DUMP), None)
-    print(f"\n--- {version}: ai_act levels for '{TARGET_PROCESS_FOR_AI_ACT_DUMP}' ---")
+    print(f"\n--- {run_label(version, model)}: '{TARGET_PROCESS_FOR_AI_ACT_DUMP}' ---")
     if record is None:
-        print("(process not found in this version's results)")
+        print("(process not found in this run's results)")
     elif not record["use_cases"]:
-        print(f"(0 use cases — no_fit_reason: {_get_no_fit_reason(record)})")
+        print(f"0 use cases — no_fit_reason: {_get_no_fit_reason(record)}")
     else:
+        print(f"{len(record['use_cases'])} use case(s):")
         for uc in record["use_cases"]:
             print(f"- [{uc['type']}] ai_act={uc['ai_act']} — {uc['description']}")
 
@@ -148,28 +172,41 @@ def main() -> None:
     sys.stdout.reconfigure(encoding="utf-8")
 
     expected_fit = load_expected_fit()
-    metrics = {version: compute_metrics(version, expected_fit) for version in VERSIONS}
+    metrics = {
+        (version, model): compute_metrics(version, model, expected_fit) for version, model in RUNS
+    }
 
+    labels = [run_label(version, model) for version, model in RUNS]
     label_width = max(len(label) for _, label in ROWS) + 2
-    header = f"{'metric':<{label_width}}" + "".join(f"{v:>12}" for v in VERSIONS)
+    header = f"{'metric':<{label_width}}" + "".join(f"{v:>14}" for v in labels)
     print(header)
     print("-" * len(header))
     for key, label in ROWS:
         row = f"{label:<{label_width}}"
-        for version in VERSIONS:
-            value = metrics[version][key]
+        for version, model in RUNS:
+            value = metrics[(version, model)][key]
             if key == "cost_usd":
                 cell = f"${value:.6f}"
             else:
                 cell = format_cell(value)
-            row += f"{cell:>12}"
+            row += f"{cell:>14}"
         print(row)
 
-    for version in VERSIONS:
-        print_no_fit_reasons(version)
+    for version, model in RUNS:
+        print_no_fit_reasons(version, model)
 
-    for version in VERSIONS:
-        print_ai_act_levels_for_target_process(version)
+    for version, model in RUNS:
+        print_ai_act_levels_for_target_process(version, model)
+
+    other_models = sorted({model for _, model in RUNS if model != MODEL_NAME})
+    if other_models:
+        print(
+            f"\nCaveat: PRICE_INPUT_PER_MTOK_USD / PRICE_OUTPUT_PER_MTOK_USD in "
+            f"core/config.py are priced for {MODEL_NAME} only. Cost figures for "
+            f"{', '.join(other_models)} reuse those same per-token prices and do "
+            f"NOT reflect that model's actual pricing — re-check its real price "
+            f"on the Anthropic pricing page before trusting that column."
+        )
 
 
 if __name__ == "__main__":

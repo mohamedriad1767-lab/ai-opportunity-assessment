@@ -2,11 +2,12 @@
 
 For each process in evals/eval_processes.csv, generates use cases (using the
 demo company profile as context), and writes one JSON line per process to
-evals/results/{PROMPT_VERSION}_{MODEL_NAME}.jsonl. Then builds an empty
-grading CSV (evals/grading_{PROMPT_VERSION}.csv), one row per generated use
+evals/results/{PROMPT_VERSION}_{model}.jsonl. Then builds an empty grading
+CSV (evals/grading_{PROMPT_VERSION}_{model}.csv), one row per generated use
 case, for a human to fill in relevance/realism/overlap judgments.
 """
 
+import argparse
 import csv
 import json
 import logging
@@ -28,17 +29,15 @@ from core.prompts import PROMPT_VERSION
 EVAL_PROCESSES_PATH = "evals/eval_processes.csv"
 COMPANY_PROFILE_PATH = "data/demo_company_profile.json"
 RESULTS_DIR = "evals/results"
-RESULTS_PATH = f"{RESULTS_DIR}/{PROMPT_VERSION}_{MODEL_NAME}.jsonl"
-GRADING_PATH = f"evals/grading_{PROMPT_VERSION}.csv"
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 
 
-def run_one_process(company: Company, process, client) -> dict:
+def run_one_process(company: Company, process, client, model: str) -> dict:
     """Generate use cases for one process and return a JSON-serializable result record."""
     stats: dict = {}
     try:
-        result = generate_use_cases(company, process, client, stats=stats)
+        result = generate_use_cases(company, process, client, stats=stats, model=model)
     except GenerationError as exc:
         return {
             "process": process.name,
@@ -57,15 +56,15 @@ def run_one_process(company: Company, process, client) -> dict:
     }
 
 
-def write_results(results: list[dict]) -> None:
+def write_results(results: list[dict], results_path: str) -> None:
     """Write one JSON line per process result."""
     os.makedirs(RESULTS_DIR, exist_ok=True)
-    with open(RESULTS_PATH, "w", encoding="utf-8") as f:
+    with open(results_path, "w", encoding="utf-8") as f:
         for result in results:
             f.write(json.dumps(result) + "\n")
 
 
-def write_grading_csv(results: list[dict]) -> None:
+def write_grading_csv(results: list[dict], grading_path: str) -> None:
     """Write an empty grading sheet, one row per generated use case."""
     fieldnames = [
         "process",
@@ -79,7 +78,7 @@ def write_grading_csv(results: list[dict]) -> None:
         "overlaps_another",
         "comment",
     ]
-    with open(GRADING_PATH, "w", encoding="utf-8", newline="") as f:
+    with open(grading_path, "w", encoding="utf-8", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
         for result in results:
@@ -100,6 +99,16 @@ def write_grading_csv(results: list[dict]) -> None:
                 )
 
 
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Run use-case generation over the eval set.")
+    parser.add_argument(
+        "--model",
+        default=MODEL_NAME,
+        help=f"Model to use for generation (default: {MODEL_NAME})",
+    )
+    return parser.parse_args()
+
+
 def main() -> None:
     sys.stdout.reconfigure(encoding="utf-8")
     load_dotenv()
@@ -107,6 +116,11 @@ def main() -> None:
     if not api_key:
         print("Error: ANTHROPIC_API_KEY is not set. Add it to your .env file and try again.")
         sys.exit(1)
+
+    args = parse_args()
+    model = args.model
+    results_path = f"{RESULTS_DIR}/{PROMPT_VERSION}_{model}.jsonl"
+    grading_path = f"evals/grading_{PROMPT_VERSION}_{model}.csv"
 
     with open(COMPANY_PROFILE_PATH, encoding="utf-8") as f:
         company = Company(**json.load(f))
@@ -117,14 +131,14 @@ def main() -> None:
     results = []
     for process in processes:
         print(f"Generating for: {process.name}")
-        results.append(run_one_process(company, process, client))
+        results.append(run_one_process(company, process, client, model))
 
-    write_results(results)
-    write_grading_csv(results)
+    write_results(results, results_path)
+    write_grading_csv(results, grading_path)
 
-    print(f"\nWrote {len(results)} results to {RESULTS_PATH}")
+    print(f"\nWrote {len(results)} results to {results_path}")
     total_use_cases = sum(len(r["use_cases"]) for r in results)
-    print(f"Wrote {total_use_cases} grading rows to {GRADING_PATH}")
+    print(f"Wrote {total_use_cases} grading rows to {grading_path}")
 
 
 if __name__ == "__main__":

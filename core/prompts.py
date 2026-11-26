@@ -6,7 +6,7 @@ score or rank anything.
 
 from core.models import Company, Process
 
-PROMPT_VERSION = "v4.1"
+PROMPT_VERSION = "v4.2"
 
 SYSTEM_PROMPT = """You are a senior AI strategy consultant at a Big Four firm. \
 You have reviewed hundreds of AI opportunity assessments for mid-size and \

@@ -210,6 +210,36 @@ def test_no_fit_reason_is_preserved_in_generation_result(company, process):
     assert result.no_fit_reason == "Purely manual labor."
 
 
+def test_risk_worded_no_fit_reason_is_repaired(company, process):
+    """A no-fit answer citing EU AI Act / GDPR risk is rejected and repaired."""
+    client = FakeClient(
+        [
+            FakeMessage(
+                [no_fit_tool_use_block(reason="This falls under EU AI Act high-risk and GDPR compliance concerns.")]
+            ),
+            FakeMessage([valid_tool_use_block()]),
+        ]
+    )
+
+    result = generate_use_cases(company, process, client, sleep=no_op_sleep)
+
+    assert len(result.use_cases) == 1
+    assert client.messages.call_count == 2
+
+
+def test_physical_work_no_fit_reason_is_accepted(company, process):
+    """A no-fit answer citing purely physical work (no risk wording) is accepted as-is."""
+    client = FakeClient(
+        [FakeMessage([no_fit_tool_use_block(reason="This is a purely physical task with no information to process.")])]
+    )
+
+    result = generate_use_cases(company, process, client, sleep=no_op_sleep)
+
+    assert result.use_cases == []
+    assert result.no_fit_reason == "This is a purely physical task with no information to process."
+    assert client.messages.call_count == 1
+
+
 def test_stats_are_filled_after_one_repair(company, process):
     """stats reflects 2 api_calls, 1 repair, first_attempt_valid=False, and summed tokens."""
     client = FakeClient(
