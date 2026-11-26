@@ -40,12 +40,14 @@ def main() -> None:
     all_use_cases = []
     for name in PROCESS_NAMES:
         process = all_processes[name]
-        use_cases = generate_use_cases(company, process, client)
-        print(f"=== {name} ({len(use_cases)} use case(s) generated) ===")
-        for uc in use_cases:
+        result = generate_use_cases(company, process, client)
+        print(f"=== {name} ({len(result.use_cases)} use case(s) generated) ===")
+        if result.no_fit_reason:
+            print(f"No-fit reason: {result.no_fit_reason}")
+        for uc in result.use_cases:
             print(f"- [{uc.type.value}] {uc.description} (ai_act={uc.ai_act.value}, pct_time_saved={uc.pct_time_saved})")
         print()
-        all_use_cases.extend(use_cases)
+        all_use_cases.extend(result.use_cases)
 
     scored, excluded = score_use_cases(all_use_cases, all_processes, HOURLY_COST_EUR)
 

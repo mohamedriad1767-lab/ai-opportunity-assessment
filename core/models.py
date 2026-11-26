@@ -147,6 +147,17 @@ def to_use_cases(batch: ProposalBatch, process_name: str) -> list[UseCase]:
     ]
 
 
+class GenerationResult(BaseModel):
+    """The outcome of generating use cases for one process.
+
+    use_cases is empty exactly when no_fit_reason is set, mirroring
+    ProposalBatch's own invariant.
+    """
+
+    use_cases: list[UseCase]
+    no_fit_reason: str | None = None
+
+
 class Scores(BaseModel):
     """Computed scoring outputs for a use case, on a 0-100 scale."""
 

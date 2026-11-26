@@ -5,7 +5,7 @@ import httpx2
 import pytest
 
 from core.generator import GenerationError, generate_use_cases
-from core.models import Company, Process, UseCase
+from core.models import Company, GenerationResult, Process, UseCase
 
 
 class FakeBlock:
@@ -90,6 +90,11 @@ def invalid_tool_use_block(block_id: str = "toolu_1") -> FakeBlock:
     return FakeBlock("tool_use", id=block_id, input={"use_cases": [make_proposal_dict(0.9)]})
 
 
+def no_fit_tool_use_block(block_id: str = "toolu_1", reason: str = "Purely physical task.") -> FakeBlock:
+    """A tool_use block whose input validates as a ProposalBatch with 0 use cases."""
+    return FakeBlock("tool_use", id=block_id, input={"use_cases": [], "no_fit_reason": reason})
+
+
 def no_op_sleep(_seconds: float) -> None:
     """A sleep replacement that does nothing, so tests run instantly."""
 
@@ -121,14 +126,16 @@ def make_api_error(exception_class: type[BaseException], status_code: int) -> Ba
 
 
 def test_valid_first_answer_returns_use_cases_in_one_call(company, process):
-    """A valid tool_use block on the first try returns UseCase objects after 1 call."""
+    """A valid tool_use block on the first try returns a GenerationResult after 1 call."""
     client = FakeClient([FakeMessage([valid_tool_use_block()])])
 
     result = generate_use_cases(company, process, client, sleep=no_op_sleep)
 
-    assert len(result) == 1
-    assert isinstance(result[0], UseCase)
-    assert result[0].process_name == process.name
+    assert isinstance(result, GenerationResult)
+    assert len(result.use_cases) == 1
+    assert isinstance(result.use_cases[0], UseCase)
+    assert result.use_cases[0].process_name == process.name
+    assert result.no_fit_reason is None
     assert client.messages.call_count == 1
 
 
@@ -140,7 +147,7 @@ def test_invalid_then_valid_succeeds_after_one_repair(company, process):
 
     result = generate_use_cases(company, process, client, sleep=no_op_sleep)
 
-    assert len(result) == 1
+    assert len(result.use_cases) == 1
     assert client.messages.call_count == 2
 
 
@@ -162,7 +169,7 @@ def test_transient_error_twice_then_success_succeeds_after_three_calls(company, 
 
     result = generate_use_cases(company, process, client, sleep=sleep_calls.append)
 
-    assert len(result) == 1
+    assert len(result.use_cases) == 1
     assert client.messages.call_count == 3
     assert sleep_calls == [1, 2]
 
@@ -189,8 +196,18 @@ def test_no_tool_use_block_is_treated_as_invalid_and_repaired(company, process):
 
     result = generate_use_cases(company, process, client, sleep=no_op_sleep)
 
-    assert len(result) == 1
+    assert len(result.use_cases) == 1
     assert client.messages.call_count == 2
+
+
+def test_no_fit_reason_is_preserved_in_generation_result(company, process):
+    """A 0-use-case answer with a no_fit_reason is returned, not dropped."""
+    client = FakeClient([FakeMessage([no_fit_tool_use_block(reason="Purely manual labor.")])])
+
+    result = generate_use_cases(company, process, client, sleep=no_op_sleep)
+
+    assert result.use_cases == []
+    assert result.no_fit_reason == "Purely manual labor."
 
 
 def test_stats_are_filled_after_one_repair(company, process):

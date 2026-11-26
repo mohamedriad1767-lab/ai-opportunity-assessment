@@ -1,11 +1,33 @@
-metric                                    v3          v4
---------------------------------------------------------
-Valid output rate                    100.00%     100.00%
-Avg use cases / process                 2.10        1.50
-No-fit answers                             0           2
-Avg relevance (judge)                   4.57        4.60
-Avg realism (judge)                     3.81        3.73
-Overlap rate (judge)                  19.05%       6.67%
-AI Act error rate (judge)             19.05%       6.67%
-Distinct pct_time_saved values             5           6
-Cost (USD)                         $0.083279   $0.077979
+metric                                    v3          v4        v4.1
+--------------------------------------------------------------------
+Valid output rate                    100.00%     100.00%     100.00%
+Avg use cases / process                 2.10        1.50        1.80
+No-fit answers                             0           2           2
+No-fit accuracy                       90.00%      90.00%      90.00%
+Avg relevance (judge)                   4.57        4.60        4.72
+Avg realism (judge)                     3.81        3.73        4.00
+Overlap rate (judge)                  19.05%       6.67%      11.11%
+AI Act error rate (judge)             19.05%       6.67%      16.67%
+Distinct pct_time_saved values             5           6           6
+Cost (USD)                         $0.083279   $0.077979   $0.085309
+
+--- v3: no-fit reasons (0) ---
+(none)
+
+--- v4: no-fit reasons (2) ---
+- Forklift preventive maintenance: This is fundamentally a physical maintenance process. The core pain points—hands-on equipment inspection, hands-on repair work, and physical parts delivery—are not information-processing problems that AI can solve. While maintenance logs and parts inventory are data artifacts of the process, the actual value delivery (detecting wear, performing repairs, stocking parts) depends on technician expertise and physical work. AI might support peripheral tasks like scheduling optimization or inventory forecasting, but those are not among the named pain points, and adding a tool that does not address the stated problems would be padding. The process is not a good AI candidate.
+- Annual performance review drafting and calibration: This process involves evaluation of worker performance and behavior, and decisions about employment continuation and development — it falls squarely into the EU AI Act HIGH-risk category (Annex III, recitals on worker evaluation and promotion/termination decisions). Any AI assistance in drafting or calibrating performance reviews risks automating a decision that must remain fully human, transparent, and contestable by the employee. The pain points (varying write-up quality, calibration preparation burden) are real, but they are best addressed through better manager training, templates, and structured review frameworks — not AI automation. Using AI to synthesize, score, or recommend performance judgments on workers creates unacceptable legal, ethical, and adoption risk: employees have a right to contest their evaluation, and an AI-assisted score could be opaque to them. The sensitivity of the data (employee performance, personal file) combined with the HIGH AI Act risk makes this a clear no-fit for AI intervention.
+
+--- v4.1: no-fit reasons (2) ---
+- Forklift preventive maintenance: Forklift preventive maintenance is fundamentally a hands-on physical task. The core pain points—physical inspection, hands-on repair work, and scheduling constraints around warehouse operations—cannot be addressed by information-processing AI. While the company does have maintenance logs, equipment manuals, and parts inventory data, the bottlenecks are not in data processing but in the physical work itself and operational scheduling. Parts availability delays are a supply-chain coordination issue, not an information extraction or classification problem. AI might help with scheduling optimization or parts forecasting at the margins, but neither directly addresses the stated pain points of inspection and repair work, and neither would generate realistic time savings on the 45-minute occurrence itself. This is a case where the process is primarily physical labor, not data-driven work.
+- Annual performance review drafting and calibration: This process involves evaluation of workers' performance and behaviour, which falls squarely into EU AI Act HIGH-RISK territory (Annex III, biometric categorisation for performance monitoring). Additionally, any AI system standardising or augmenting performance review narratives risks introducing algorithmic bias into employment decisions with direct legal and ethical consequences (promotion, termination, compensation). While some downstream tasks (e.g. extracting summary statistics for a human calibrator) might be lower-risk, the core pain points—inconsistent manager write-ups and calibration preparation—are asking for AI to either generate or standardise evaluative content about individual employees. This cannot be responsibly addressed without bespoke high-risk governance that is beyond standard AI tooling. The sensitivity of personal performance data and the legal stakes of employment decisions make this a poor candidate for rapid, off-the-shelf AI intervention. The firm's HR and legal teams should own this decision; it is not appropriate for this assessment to propose a use case.
+
+--- v3: ai_act levels for 'Annual performance review drafting and calibration' ---
+- [assistant] ai_act=limited — An AI assistant that reads prior review scores, manager narrative comments, and HR calibration notes, then generates a structured performance summary and suggests consistent scoring tiers (exceeds, meets, needs improvement) for each competency, flagging outliers for HR review.
+- [classification] ai_act=limited — A classifier that tags manager narratives with common performance themes (e.g., technical excellence, collaboration, missed deadlines, development needs) to accelerate HR's calibration meeting preparation and cross-employee comparison.
+
+--- v4: ai_act levels for 'Annual performance review drafting and calibration' ---
+(0 use cases — no_fit_reason: This process involves evaluation of worker performance and behavior, and decisions about employment continuation and development — it falls squarely into the EU AI Act HIGH-risk category (Annex III, recitals on worker evaluation and promotion/termination decisions). Any AI assistance in drafting or calibrating performance reviews risks automating a decision that must remain fully human, transparent, and contestable by the employee. The pain points (varying write-up quality, calibration preparation burden) are real, but they are best addressed through better manager training, templates, and structured review frameworks — not AI automation. Using AI to synthesize, score, or recommend performance judgments on workers creates unacceptable legal, ethical, and adoption risk: employees have a right to contest their evaluation, and an AI-assisted score could be opaque to them. The sensitivity of the data (employee performance, personal file) combined with the HIGH AI Act risk makes this a clear no-fit for AI intervention.)
+
+--- v4.1: ai_act levels for 'Annual performance review drafting and calibration' ---
+(0 use cases — no_fit_reason: This process involves evaluation of workers' performance and behaviour, which falls squarely into EU AI Act HIGH-RISK territory (Annex III, biometric categorisation for performance monitoring). Additionally, any AI system standardising or augmenting performance review narratives risks introducing algorithmic bias into employment decisions with direct legal and ethical consequences (promotion, termination, compensation). While some downstream tasks (e.g. extracting summary statistics for a human calibrator) might be lower-risk, the core pain points—inconsistent manager write-ups and calibration preparation—are asking for AI to either generate or standardise evaluative content about individual employees. This cannot be responsibly addressed without bespoke high-risk governance that is beyond standard AI tooling. The sensitivity of personal performance data and the legal stakes of employment decisions make this a poor candidate for rapid, off-the-shelf AI intervention. The firm's HR and legal teams should own this decision; it is not appropriate for this assessment to propose a use case.)

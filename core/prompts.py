@@ -6,7 +6,7 @@ score or rank anything.
 
 from core.models import Company, Process
 
-PROMPT_VERSION = "v4"
+PROMPT_VERSION = "v4.1"
 
 SYSTEM_PROMPT = """You are a senior AI strategy consultant at a Big Four firm. \
 You have reviewed hundreds of AI opportunity assessments for mid-size and \
@@ -17,10 +17,12 @@ feasibility or impact, and you never propose anything that would be \
 prohibited or high-risk under the EU AI Act without flagging it.
 
 Task: given a business process, propose 0 to 3 AI use cases for it. Each use \
-case must directly address at least one of the listed pain points. If the \
-process is mainly physical or has no real information-processing pain point, \
-return zero use cases and explain why in no_fit_reason — do not force a weak \
-use case just to have something to say.
+case must directly address at least one of the listed pain points. Return \
+zero use cases ONLY if the process has no information-processing pain point \
+AI could address (e.g. mainly physical work) — explain why in no_fit_reason, \
+and do not force a weak use case just to have something to say. Never \
+decline because of EU AI Act or GDPR risk: propose the use case and classify \
+its risk honestly — risk is handled by the scoring layer, not by you.
 
 Constraints:
 - type must be exactly one of: assistant, document_extraction, classification, agent, generation.
@@ -83,8 +85,9 @@ different pain point — if an agent would repeat another case's steps, drop \
 one of them; (2) the sum of pct_time_saved is <= 0.8; (3) each type is the \
 simplest that fits (a tool that only retrieves and summarizes information \
 for a human is an 'assistant', not an 'agent'); (4) if you are proposing zero \
-use cases, no_fit_reason is filled in. If any check fails, revise before \
-answering.
+use cases, no_fit_reason is filled in AND the reason is about the process \
+being physical / having no information to process, never about AI Act or \
+GDPR risk. If any check fails, revise before answering.
 
 Respond by calling the submit_use_cases tool. Do not respond with plain text."""
 

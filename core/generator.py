@@ -12,7 +12,7 @@ import anthropic
 from pydantic import ValidationError
 
 from core.config import MODEL_NAME
-from core.models import Company, Process, ProposalBatch, UseCase, to_use_cases
+from core.models import Company, GenerationResult, Process, ProposalBatch, to_use_cases
 from core.prompts import SYSTEM_PROMPT, build_user_prompt
 
 logger = logging.getLogger(__name__)
@@ -166,7 +166,7 @@ def generate_use_cases(
     client: anthropic.Anthropic,
     sleep=time.sleep,
     stats: dict | None = None,
-) -> list[UseCase]:
+) -> GenerationResult:
     """Ask the model for 0-3 AI use cases for a process, via forced tool use.
 
     Retries transient API errors with backoff (see _call_model), and repairs
@@ -175,10 +175,12 @@ def generate_use_cases(
     MAX_REPAIR_ATTEMPTS times. Raises GenerationError if generation still
     fails after that.
 
+    The returned GenerationResult always carries no_fit_reason alongside
+    use_cases, so a "no good AI fit" answer is never silently dropped.
+
     If stats is given, it is filled with: api_calls, repair_attempts,
     first_attempt_valid (bool), input_tokens, output_tokens (summed across
-    all calls made for this process). On success it also gets
-    no_fit_reason, which is non-None when the model proposed zero use cases.
+    all calls made for this process).
     """
     messages = [{"role": "user", "content": build_user_prompt(company, process)}]
     last_error_text = ""
@@ -204,8 +206,10 @@ def generate_use_cases(
             else:
                 if stats is not None:
                     _fill_stats(stats, stats_accumulator, first_attempt_valid=repair_attempt == 0)
-                    stats["no_fit_reason"] = batch.no_fit_reason
-                return to_use_cases(batch, process.name)
+                return GenerationResult(
+                    use_cases=to_use_cases(batch, process.name),
+                    no_fit_reason=batch.no_fit_reason,
+                )
 
         logger.warning(
             "Invalid generation output on attempt %d/%d: %s",

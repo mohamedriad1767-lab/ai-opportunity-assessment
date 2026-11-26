@@ -38,13 +38,20 @@ def run_one_process(company: Company, process, client) -> dict:
     """Generate use cases for one process and return a JSON-serializable result record."""
     stats: dict = {}
     try:
-        use_cases = generate_use_cases(company, process, client, stats=stats)
+        result = generate_use_cases(company, process, client, stats=stats)
     except GenerationError as exc:
-        return {"process": process.name, "use_cases": [], "stats": stats, "error": str(exc)}
+        return {
+            "process": process.name,
+            "use_cases": [],
+            "no_fit_reason": None,
+            "stats": stats,
+            "error": str(exc),
+        }
 
     return {
         "process": process.name,
-        "use_cases": [uc.model_dump(mode="json") for uc in use_cases],
+        "use_cases": [uc.model_dump(mode="json") for uc in result.use_cases],
+        "no_fit_reason": result.no_fit_reason,
         "stats": stats,
         "error": None,
     }
