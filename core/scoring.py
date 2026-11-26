@@ -95,6 +95,23 @@ def validate_weights(weights: dict[str, dict[str, float]]) -> None:
             raise ValueError(f"Weights for axis '{axis}' must sum to 1.0, got {total}")
 
 
+def normalize_weights(weights: dict[str, dict[str, float]]) -> dict[str, dict[str, float]]:
+    """Normalize each axis's sub-weights to sum to 1, preserving their relative proportions.
+
+    If an axis's raw weights sum to 0, that axis is returned unchanged (still
+    all zero) rather than dividing by zero; validate_weights will then catch
+    it if the caller passes the result on for scoring.
+    """
+    normalized: dict[str, dict[str, float]] = {}
+    for axis, sub_weights in weights.items():
+        total = sum(sub_weights.values())
+        if total == 0:
+            normalized[axis] = dict(sub_weights)
+        else:
+            normalized[axis] = {key: value / total for key, value in sub_weights.items()}
+    return normalized
+
+
 def note_to_100(note: int) -> float:
     """Convert a 1-5 note to a 0-100 scale: (note - 1) / 4 * 100.
 

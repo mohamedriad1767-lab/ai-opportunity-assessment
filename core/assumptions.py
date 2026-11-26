@@ -38,9 +38,9 @@ class Assumptions(BaseModel):
     are available.
     """
 
-    daily_rate_eur: float = Field(default=650, ge=0, description="Blended build team day rate")
+    daily_rate_eur: float = Field(default=650.0, ge=0, description="Blended build team day rate")
     build_days_by_complexity: dict[int, float] = Field(
-        default_factory=lambda: {1: 5, 2: 10, 3: 20, 4: 35, 5: 60},
+        default_factory=lambda: {1: 5.0, 2: 10.0, 3: 20.0, 4: 35.0, 5: 60.0},
         description="Build effort in days, keyed by technical_complexity (1-5)",
     )
     off_the_shelf_build_factor: float = Field(
@@ -51,12 +51,12 @@ class Assumptions(BaseModel):
         "roughly this fraction of a custom build's effort",
     )
     integration_days_per_data_source: float = Field(
-        default=3,
+        default=3.0,
         ge=0,
         description="Extra build days per data source the process uses, on top of "
         "the complexity-based build days",
     )
-    annual_license_eur_off_the_shelf: float = Field(default=6000, ge=0)
+    annual_license_eur_off_the_shelf: float = Field(default=6000.0, ge=0)
     llm_cost_per_occurrence_eur: float = Field(
         default=0.01, ge=0, description="API cost per processed occurrence"
     )
@@ -64,7 +64,7 @@ class Assumptions(BaseModel):
         default=0.15, ge=0, le=1, description="Annual maintenance cost, as a fraction of build cost"
     )
     change_management_days_by_adoption_risk: dict[int, float] = Field(
-        default_factory=lambda: {1: 2, 2: 5, 3: 10, 4: 20, 5: 30},
+        default_factory=lambda: {1: 2.0, 2: 5.0, 3: 10.0, 4: 20.0, 5: 30.0},
         description="One-off change management effort in days (training, communication, "
         "process redesign), keyed by adoption_risk (1-5)",
     )
