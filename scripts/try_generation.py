@@ -56,9 +56,19 @@ def main() -> None:
         output_tokens = response.usage.output_tokens
         cost = compute_cost(input_tokens, output_tokens)
 
+        try:
+            parsed = json.loads(text)
+            parses = True
+            pct_sum = sum(item["pct_time_saved"] for item in parsed)
+        except (json.JSONDecodeError, KeyError, TypeError):
+            parses = False
+            pct_sum = None
+
         print(f"=== {name} ===")
         print(text)
-        print(f"\ninput_tokens={input_tokens} output_tokens={output_tokens} cost=${cost:.6f}")
+        print(f"\nparses_as_json={parses}")
+        print(f"pct_time_saved_sum={pct_sum}")
+        print(f"input_tokens={input_tokens} output_tokens={output_tokens} cost=${cost:.6f}")
         print()
 
 
