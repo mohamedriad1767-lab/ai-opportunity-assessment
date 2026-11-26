@@ -8,10 +8,9 @@ import sys
 # making the project root importable regardless of the current working directory.
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import anthropic
 from dotenv import load_dotenv
 
-from core.generator import generate_use_cases
+from core.generator import generate_use_cases, make_client
 from core.loader import load_processes
 from core.models import Company
 from core.scoring import score_use_cases
@@ -36,7 +35,7 @@ def main() -> None:
         company = Company(**json.load(f))
 
     all_processes = {p.name: p for p in load_processes("data/demo_company.csv")}
-    client = anthropic.Anthropic(api_key=api_key)
+    client = make_client(api_key)
 
     all_use_cases = []
     for name in PROCESS_NAMES:

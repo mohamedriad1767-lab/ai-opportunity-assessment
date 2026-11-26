@@ -67,28 +67,6 @@ class GDPRLevel(str, Enum):
     SENSITIVE = "sensitive"
 
 
-class UseCase(BaseModel):
-    """An AI use case proposed for a given process, with scoring inputs."""
-
-    process_name: str
-    type: UseCaseType
-    description: str
-    justification: str
-    pct_time_saved: float = Field(gt=0, le=1)
-
-    # Criteria notes, each on a 1-5 scale.
-    quality_impact: int = Field(ge=1, le=5)
-    strategic_alignment: int = Field(ge=1, le=5)
-    data_quality: int = Field(ge=1, le=5)
-    technical_complexity: int = Field(ge=1, le=5)
-    adoption_risk: int = Field(ge=1, le=5)
-
-    off_the_shelf: bool
-    ai_act: AIActLevel
-    gdpr: GDPRLevel
-    criteria_rationale: dict[str, str] = {}
-
-
 class UseCaseProposal(BaseModel):
     """A single AI use case as proposed by the LLM, before process_name is attached.
 
@@ -115,10 +93,21 @@ class UseCaseProposal(BaseModel):
     ai_act: AIActLevel
     gdpr: GDPRLevel
     criteria_rationale: dict[str, str] = Field(
+        default_factory=dict,
         description="One short line of rationale per criterion (quality_impact, "
         "strategic_alignment, data_quality, technical_complexity, adoption_risk, "
-        "off_the_shelf, ai_act, gdpr)."
+        "off_the_shelf, ai_act, gdpr).",
     )
+
+
+class UseCase(UseCaseProposal):
+    """A UseCaseProposal attached to a specific process, with scoring inputs.
+
+    Adds only process_name on top of UseCaseProposal: every other field is
+    inherited unchanged.
+    """
+
+    process_name: str
 
 
 class ProposalBatch(BaseModel):
@@ -141,22 +130,7 @@ def to_use_cases(batch: ProposalBatch, process_name: str) -> list[UseCase]:
     process_name is supplied by the caller (code), not by the LLM.
     """
     return [
-        UseCase(
-            process_name=process_name,
-            type=proposal.type,
-            description=proposal.description,
-            justification=proposal.justification,
-            pct_time_saved=proposal.pct_time_saved,
-            quality_impact=proposal.quality_impact,
-            strategic_alignment=proposal.strategic_alignment,
-            data_quality=proposal.data_quality,
-            technical_complexity=proposal.technical_complexity,
-            adoption_risk=proposal.adoption_risk,
-            off_the_shelf=proposal.off_the_shelf,
-            ai_act=proposal.ai_act,
-            gdpr=proposal.gdpr,
-            criteria_rationale=proposal.criteria_rationale,
-        )
+        UseCase(process_name=process_name, **proposal.model_dump())
         for proposal in batch.use_cases
     ]
 
