@@ -5,7 +5,7 @@ This module only defines data shapes. Scoring logic lives elsewhere.
 
 from enum import Enum
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class Company(BaseModel):
@@ -86,6 +86,79 @@ class UseCase(BaseModel):
     off_the_shelf: bool
     ai_act: AIActLevel
     gdpr: GDPRLevel
+    criteria_rationale: dict[str, str] = {}
+
+
+class UseCaseProposal(BaseModel):
+    """A single AI use case as proposed by the LLM, before process_name is attached.
+
+    process_name is deliberately absent here: it is set by the code
+    (to_use_cases), never by the LLM, so the LLM cannot misattribute a
+    proposal to a different process.
+    """
+
+    type: UseCaseType
+    description: str
+    justification: str
+    pct_time_saved: float = Field(gt=0, le=1)
+
+    # Criteria notes, each on a 1-5 scale.
+    quality_impact: int = Field(ge=1, le=5)
+    strategic_alignment: int = Field(ge=1, le=5)
+    data_quality: int = Field(ge=1, le=5)
+    technical_complexity: int = Field(ge=1, le=5)
+    adoption_risk: int = Field(ge=1, le=5)
+
+    off_the_shelf: bool
+    # "prohibited" is allowed here (unlike scoring) so the code can detect
+    # and exclude prohibited proposals rather than the LLM silently omitting them.
+    ai_act: AIActLevel
+    gdpr: GDPRLevel
+    criteria_rationale: dict[str, str] = Field(
+        description="One short line of rationale per criterion (quality_impact, "
+        "strategic_alignment, data_quality, technical_complexity, adoption_risk, "
+        "off_the_shelf, ai_act, gdpr)."
+    )
+
+
+class ProposalBatch(BaseModel):
+    """A batch of 1 to 3 use-case proposals for a single process."""
+
+    use_cases: list[UseCaseProposal] = Field(min_length=1, max_length=3)
+
+    @model_validator(mode="after")
+    def check_pct_time_saved_sum(self) -> "ProposalBatch":
+        """Reject a batch whose pct_time_saved values sum above 0.8."""
+        total = sum(uc.pct_time_saved for uc in self.use_cases)
+        if total > 0.8:
+            raise ValueError(f"Sum of pct_time_saved must be <= 0.8, got {total}")
+        return self
+
+
+def to_use_cases(batch: ProposalBatch, process_name: str) -> list[UseCase]:
+    """Convert a validated ProposalBatch into UseCase objects for one process.
+
+    process_name is supplied by the caller (code), not by the LLM.
+    """
+    return [
+        UseCase(
+            process_name=process_name,
+            type=proposal.type,
+            description=proposal.description,
+            justification=proposal.justification,
+            pct_time_saved=proposal.pct_time_saved,
+            quality_impact=proposal.quality_impact,
+            strategic_alignment=proposal.strategic_alignment,
+            data_quality=proposal.data_quality,
+            technical_complexity=proposal.technical_complexity,
+            adoption_risk=proposal.adoption_risk,
+            off_the_shelf=proposal.off_the_shelf,
+            ai_act=proposal.ai_act,
+            gdpr=proposal.gdpr,
+            criteria_rationale=proposal.criteria_rationale,
+        )
+        for proposal in batch.use_cases
+    ]
 
 
 class Scores(BaseModel):
