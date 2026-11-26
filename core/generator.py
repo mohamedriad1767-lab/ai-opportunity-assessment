@@ -167,7 +167,7 @@ def generate_use_cases(
     sleep=time.sleep,
     stats: dict | None = None,
 ) -> list[UseCase]:
-    """Ask the model for 1-3 AI use cases for a process, via forced tool use.
+    """Ask the model for 0-3 AI use cases for a process, via forced tool use.
 
     Retries transient API errors with backoff (see _call_model), and repairs
     malformed model output (missing tool_use, max_tokens cutoff, or schema
@@ -177,7 +177,8 @@ def generate_use_cases(
 
     If stats is given, it is filled with: api_calls, repair_attempts,
     first_attempt_valid (bool), input_tokens, output_tokens (summed across
-    all calls made for this process), whether generation succeeds or not.
+    all calls made for this process). On success it also gets
+    no_fit_reason, which is non-None when the model proposed zero use cases.
     """
     messages = [{"role": "user", "content": build_user_prompt(company, process)}]
     last_error_text = ""
@@ -203,6 +204,7 @@ def generate_use_cases(
             else:
                 if stats is not None:
                     _fill_stats(stats, stats_accumulator, first_attempt_valid=repair_attempt == 0)
+                    stats["no_fit_reason"] = batch.no_fit_reason
                 return to_use_cases(batch, process.name)
 
         logger.warning(

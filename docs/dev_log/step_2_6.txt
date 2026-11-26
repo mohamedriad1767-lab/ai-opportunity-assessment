@@ -1,0 +1,11 @@
+metric                                    v3          v4
+--------------------------------------------------------
+Valid output rate                    100.00%     100.00%
+Avg use cases / process                 2.10        1.50
+No-fit answers                             0           2
+Avg relevance (judge)                   4.57        4.60
+Avg realism (judge)                     3.81        3.73
+Overlap rate (judge)                  19.05%       6.67%
+AI Act error rate (judge)             19.05%       6.67%
+Distinct pct_time_saved values             5           6
+Cost (USD)                         $0.083279   $0.077979

@@ -24,3 +24,8 @@ High risk is legal but requires compliance work (documentation, human oversight,
 ## Prohibited cases are removed before gain normalization
 
 Prohibited cases are removed before gain normalization, so they cannot distort the min/max of the remaining portfolio.
+
+## Prompt v4: allow "no good AI fit", tighten AI Act guidance and overlap rule, de-anchor the example
+
+v3 over-proposed use cases for worker-evaluation processes under "limited" AI Act risk and let siblings overlap; v4 adds a 0-use-case "no_fit_reason" option, explicit Annex III worker-evaluation guidance, a "different pain point per use case" overlap rule, and a second contrasting worked example with different pct_time_saved values so the model stops anchoring on the first example's numbers.
+Measured on the same 10-process eval set: AI Act error rate 19.05% -> 6.67%, overlap rate 19.05% -> 6.67%, 2 processes correctly returned a no-fit answer (0 in v3), avg use cases/process 2.10 -> 1.50, judge relevance 4.57 -> 4.60, judge realism 3.81 -> 3.73, cost $0.083279 -> $0.077979 for the same 10 processes.

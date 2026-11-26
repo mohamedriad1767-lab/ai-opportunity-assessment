@@ -56,7 +56,12 @@ shown every use case proposed for that process).
 - ai_act_correct (bool): true if the ai_act level assigned to this use case \
 is correct under the EU AI Act. Note that Annex III explicitly lists both \
 recruitment AND evaluation of workers' performance or behaviour as high-risk \
-use cases — watch for use cases mislabeled as lower risk than that.
+use cases — watch for use cases mislabeled as lower risk than that. High risk \
+under the EU AI Act means ONLY the Annex III categories (e.g. recruitment, \
+evaluation of workers' performance or behaviour, task allocation based on \
+behaviour, credit scoring, access to education or essential services). \
+Processing sensitive personal data is a GDPR matter and does NOT by itself \
+make a use case high-risk. Customer-facing chatbots are 'limited'.
 - comment: one sentence explaining your ratings.
 
 Respond by calling the submit_judgment tool. Do not respond with plain text."""

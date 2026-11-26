@@ -6,7 +6,7 @@ score or rank anything.
 
 from core.models import Company, Process
 
-PROMPT_VERSION = "v3"
+PROMPT_VERSION = "v4"
 
 SYSTEM_PROMPT = """You are a senior AI strategy consultant at a Big Four firm. \
 You have reviewed hundreds of AI opportunity assessments for mid-size and \
@@ -16,20 +16,26 @@ plainly when a process is not a good AI candidate. You never oversell \
 feasibility or impact, and you never propose anything that would be \
 prohibited or high-risk under the EU AI Act without flagging it.
 
-Task: given a business process, propose 1 to 3 AI use cases for it. Each use \
-case must directly address at least one of the listed pain points.
+Task: given a business process, propose 0 to 3 AI use cases for it. Each use \
+case must directly address at least one of the listed pain points. If the \
+process is mainly physical or has no real information-processing pain point, \
+return zero use cases and explain why in no_fit_reason — do not force a weak \
+use case just to have something to say.
 
 Constraints:
 - type must be exactly one of: assistant, document_extraction, classification, agent, generation.
 - Prefer fewer, stronger use cases over padding the list.
-- Use cases for the same process must NOT overlap. If an end-to-end agent \
-would already include simpler use cases (e.g. extraction, classification) as \
-steps, propose either the simpler components OR the single agent that does \
-all of it end to end, never both.
+- Use cases for the same process must NOT overlap: each use case must target \
+a DIFFERENT pain point. If an end-to-end agent would already include simpler \
+use cases (e.g. extraction, classification) as steps, propose either the \
+simpler components OR the single agent that does all of it end to end, never \
+both.
 - pct_time_saved must be a realistic fraction between 0.1 and 0.8 of the time \
 spent on THIS process, not of the person's whole job. The SUM of \
 pct_time_saved across all use cases you propose for one process must not \
-exceed 0.8.
+exceed 0.8. Estimate pct_time_saved independently for each process based on \
+its own pain points and minutes per occurrence; do not reuse the worked \
+examples' values.
 - Prefer the simplest type that solves the pain point. Propose an "agent" \
 only when multi-step autonomy is truly required to address the pain point, \
 and an agent must never approve or trigger payments on its own without human \
@@ -56,9 +62,14 @@ Also set, with a one-line rationale for each in criteria_rationale:
 - off_the_shelf: whether a mature off-the-shelf tool already covers this, \
 versus requiring a custom build.
 - ai_act: the EU AI Act risk tier. Guidance by example: employee emotion \
-recognition is PROHIBITED; use cases touching recruitment, credit scoring, or \
-access to education are HIGH risk; customer-facing chatbots are LIMITED risk; \
-internal back-office automation with no profiling of people is MINIMAL risk.
+recognition is PROHIBITED; use cases touching recruitment, evaluation of \
+workers' performance or behaviour, promotion/termination decisions, task \
+allocation based on behaviour, credit scoring, or access to education are \
+HIGH risk; customer-facing chatbots are LIMITED risk; internal back-office \
+automation with no profiling of people is MINIMAL risk. GDPR sensitivity is a \
+separate axis: it never changes the AI Act level by itself — a use case that \
+touches sensitive personal data but does not fall into one of the Annex III \
+categories above is still minimal or limited risk, not high.
 - gdpr: none / indirect / sensitive, based on whether the use case processes \
 personal data and how sensitive it is.
 
@@ -67,15 +78,17 @@ strategic_alignment, data_quality, technical_complexity, adoption_risk, \
 off_the_shelf, ai_act, gdpr.
 
 Before answering, silently check your list: (1) no use case performs a step \
-already performed by another use case in the list — if an agent would repeat \
-another case's steps, drop one of them; (2) the sum of pct_time_saved is <= \
-0.8; (3) each type is the simplest that fits (a tool that only retrieves and \
-summarizes information for a human is an 'assistant', not an 'agent'). If any \
-check fails, revise before answering.
+already performed by another use case in the list, and each targets a \
+different pain point — if an agent would repeat another case's steps, drop \
+one of them; (2) the sum of pct_time_saved is <= 0.8; (3) each type is the \
+simplest that fits (a tool that only retrieves and summarizes information \
+for a human is an 'assistant', not an 'agent'); (4) if you are proposing zero \
+use cases, no_fit_reason is filled in. If any check fails, revise before \
+answering.
 
 Respond by calling the submit_use_cases tool. Do not respond with plain text."""
 
-WORKED_EXAMPLE_PROMPT = """Context:
+WORKED_EXAMPLE_1_PROMPT = """Context:
 - Company: ExampleCo, sector: Business Services, 500 employees
 - Process: Employee expense report validation
 - Team: Finance
@@ -85,7 +98,7 @@ WORKED_EXAMPLE_PROMPT = """Context:
 - Data used: Expense reports; receipt images; expense policy document; employee cost center
 """
 
-WORKED_EXAMPLE_RESPONSE = """{
+WORKED_EXAMPLE_1_RESPONSE = """{
   "use_cases": [
     {
       "type": "document_extraction",
@@ -114,8 +127,8 @@ WORKED_EXAMPLE_RESPONSE = """{
     {
       "type": "classification",
       "description": "A classifier that flags already-checked expense reports as auto-approvable, needs-review, or policy violation, without re-doing the extraction step.",
-      "justification": "This reduces the reviewer's workload to the reports that actually need attention, which shortens the days employees currently wait for reimbursement.",
-      "pct_time_saved": 0.3,
+      "justification": "This targets the days employees currently wait for reimbursement, by routing only the reports that actually need a reviewer's attention.",
+      "pct_time_saved": 0.15,
       "quality_impact": 3,
       "strategic_alignment": 3,
       "data_quality": 4,
@@ -138,26 +151,49 @@ WORKED_EXAMPLE_RESPONSE = """{
   ]
 }"""
 
+WORKED_EXAMPLE_2_PROMPT = """Context:
+- Company: ExampleCo, sector: Business Services, 500 employees
+- Process: Warehouse floor cleaning
+- Team: Warehouse/Logistics
+- Volume: 30 occurrences/month
+- Minutes per occurrence: 90
+- Pain points: Physically tiring work; occasional missed corners; takes staff away from other tasks
+- Data used: Cleaning schedules
+"""
+
+WORKED_EXAMPLE_2_RESPONSE = """{
+  "use_cases": [],
+  "no_fit_reason": "This is a purely physical task (mopping and sweeping a warehouse floor) with no meaningful information to process, extract, classify, or generate — the pain points are about physical labor and scheduling, not data. There is no real AI use case here beyond possibly robotics, which is outside the scope of this assessment."
+}"""
+
 
 def build_user_prompt(company: Company, process: Process) -> str:
     """Build the user-turn prompt asking for AI use-case proposals for one process.
 
     The task, constraints, and output format live in SYSTEM_PROMPT (single
-    source of truth). This prompt only contains a worked example on a process
-    not in the demo data (employee expense report validation) and the real
-    process context to generate use cases for.
+    source of truth). This prompt contains two contrasting worked examples —
+    one with use cases, one with none — on processes not in the demo data,
+    followed by the real process context to generate use cases for.
     """
     pain_points = "; ".join(process.pain_points)
     data_used = "; ".join(process.data_used)
 
-    return f"""Here is a worked example of the task, on a process that is not part \
-of this company's data, to show you the expected submit_use_cases tool input.
+    return f"""Here are two worked examples of the task, on processes that are not \
+part of this company's data, to show you the expected submit_use_cases tool \
+input in two different situations.
 
-{WORKED_EXAMPLE_PROMPT}
-Example tool input:
-{WORKED_EXAMPLE_RESPONSE}
+Example 1 — a process with good AI use cases:
+{WORKED_EXAMPLE_1_PROMPT}
+Example 1 tool input:
+{WORKED_EXAMPLE_1_RESPONSE}
 
-Now do the same task for the following process.
+Example 2 — a process with no good AI use case:
+{WORKED_EXAMPLE_2_PROMPT}
+Example 2 tool input:
+{WORKED_EXAMPLE_2_RESPONSE}
+
+Now do the same task for the following process. Estimate pct_time_saved \
+independently for this process — do not reuse the values from Example 1.
 
 Context:
 - Company: {company.name}, sector: {company.sector}, {company.employees} employees

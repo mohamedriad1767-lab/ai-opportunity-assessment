@@ -111,9 +111,14 @@ class UseCase(UseCaseProposal):
 
 
 class ProposalBatch(BaseModel):
-    """A batch of 1 to 3 use-case proposals for a single process."""
+    """A batch of 0 to 3 use-case proposals for a single process.
 
-    use_cases: list[UseCaseProposal] = Field(min_length=1, max_length=3)
+    0 use cases is allowed for a genuine "no good AI fit" answer, but then
+    no_fit_reason is required so the absence of use cases is always explained.
+    """
+
+    use_cases: list[UseCaseProposal] = Field(min_length=0, max_length=3)
+    no_fit_reason: str | None = None
 
     @model_validator(mode="after")
     def check_pct_time_saved_sum(self) -> "ProposalBatch":
@@ -121,6 +126,13 @@ class ProposalBatch(BaseModel):
         total = sum(uc.pct_time_saved for uc in self.use_cases)
         if total > 0.8:
             raise ValueError(f"Sum of pct_time_saved must be <= 0.8, got {total}")
+        return self
+
+    @model_validator(mode="after")
+    def check_no_fit_reason_required_when_empty(self) -> "ProposalBatch":
+        """Require no_fit_reason when 0 use cases are proposed."""
+        if not self.use_cases and not self.no_fit_reason:
+            raise ValueError("no_fit_reason is required when use_cases is empty")
         return self
 
 
