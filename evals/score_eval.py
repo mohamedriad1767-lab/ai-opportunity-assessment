@@ -1,5 +1,6 @@
-"""Score an evaluation run: automatic metrics from the jsonl, plus human
-grading metrics from the grading CSV once it has been filled in.
+"""Score an evaluation run: automatic metrics from the jsonl, human grading
+metrics once the grading CSV has been filled in, LLM-judge metrics once the
+judge has run, and the human-vs-judge agreement on rows graded by both.
 """
 
 import csv
@@ -16,6 +17,7 @@ from core.prompts import PROMPT_VERSION
 
 RESULTS_PATH = f"evals/results/{PROMPT_VERSION}_{MODEL_NAME}.jsonl"
 GRADING_PATH = f"evals/grading_{PROMPT_VERSION}.csv"
+JUDGE_PATH = f"evals/grading_{PROMPT_VERSION}_judge.csv"
 
 
 def load_results(path: str) -> list[dict]:
@@ -23,7 +25,9 @@ def load_results(path: str) -> list[dict]:
         return [json.loads(line) for line in f if line.strip()]
 
 
-def load_grading_rows(path: str) -> list[dict]:
+def load_csv_rows(path: str) -> list[dict]:
+    if not os.path.exists(path):
+        return []
     with open(path, encoding="utf-8", newline="") as f:
         return list(csv.DictReader(f))
 
@@ -79,11 +83,63 @@ def compute_grading_metrics(grading_rows: list[dict]) -> dict | None:
     }
 
 
+def compute_judge_metrics(judge_rows: list[dict]) -> dict | None:
+    """Compute LLM-judge metrics, or None if the judge has not been run yet."""
+    if not judge_rows:
+        return None
+
+    relevance_values = [int(r["judge_relevance"]) for r in judge_rows]
+    realism_values = [int(r["judge_realism"]) for r in judge_rows]
+    overlaps = [r["judge_overlaps_another"].strip().lower() == "true" for r in judge_rows]
+    ai_act_correct = [r["judge_ai_act_correct"].strip().lower() == "true" for r in judge_rows]
+
+    return {
+        "avg_relevance": sum(relevance_values) / len(relevance_values),
+        "avg_realism": sum(realism_values) / len(realism_values),
+        "overlap_rate": sum(overlaps) / len(overlaps),
+        "ai_act_error_rate": 1 - sum(ai_act_correct) / len(ai_act_correct),
+    }
+
+
+def compute_human_vs_judge(grading_rows: list[dict], judge_rows: list[dict]) -> dict | None:
+    """Compare human and judge grades on rows graded by both, or None if there are none."""
+    judge_by_key = {(r["process"], r["idx"]): r for r in judge_rows}
+
+    paired = []
+    for row in grading_rows:
+        key = (row["process"], row["idx"])
+        if row["relevance"].strip() and row["realism"].strip() and key in judge_by_key:
+            paired.append((row, judge_by_key[key]))
+
+    if not paired:
+        return None
+
+    relevance_diffs = [abs(float(h["relevance"]) - float(j["judge_relevance"])) for h, j in paired]
+    realism_diffs = [abs(float(h["realism"]) - float(j["judge_realism"])) for h, j in paired]
+
+    overlap_agreements = []
+    for human_row, judge_row in paired:
+        if human_row["overlaps_another"].strip():
+            human_overlaps = human_row["overlaps_another"].strip().lower() == "yes"
+            judge_overlaps = judge_row["judge_overlaps_another"].strip().lower() == "true"
+            overlap_agreements.append(human_overlaps == judge_overlaps)
+
+    return {
+        "n": len(paired),
+        "mae_relevance": sum(relevance_diffs) / len(relevance_diffs),
+        "mae_realism": sum(realism_diffs) / len(realism_diffs),
+        "overlap_agreement_rate": (
+            sum(overlap_agreements) / len(overlap_agreements) if overlap_agreements else None
+        ),
+    }
+
+
 def main() -> None:
     sys.stdout.reconfigure(encoding="utf-8")
 
     results = load_results(RESULTS_PATH)
-    grading_rows = load_grading_rows(GRADING_PATH)
+    grading_rows = load_csv_rows(GRADING_PATH)
+    judge_rows = load_csv_rows(JUDGE_PATH)
 
     automatic = compute_automatic_metrics(results)
     print(f"=== Automatic metrics ({PROMPT_VERSION}, {MODEL_NAME}) ===")
@@ -92,6 +148,16 @@ def main() -> None:
     print(f"First-attempt valid rate: {automatic['first_attempt_valid_rate']:.2%}")
     print(f"Avg use cases per process: {automatic['avg_use_cases_per_process']:.2f}")
     print(f"Total cost: ${automatic['total_cost_usd']:.6f}")
+
+    judge = compute_judge_metrics(judge_rows)
+    if judge is not None:
+        print("\n=== LLM-judge metrics ===")
+        print(f"Avg relevance: {judge['avg_relevance']:.2f}")
+        print(f"Avg realism: {judge['avg_realism']:.2f}")
+        print(f"Overlap rate: {judge['overlap_rate']:.2%}")
+        print(f"AI Act error rate: {judge['ai_act_error_rate']:.2%}")
+    else:
+        print("\nJudge has not been run yet (evals/grading_*_judge.csv not found) — skipped.")
 
     grading = compute_grading_metrics(grading_rows)
     if grading is None:
@@ -105,6 +171,17 @@ def main() -> None:
         print(f"Avg realism: {grading['avg_realism']:.2f}")
     if grading["overlap_rate"] is not None:
         print(f"Overlap rate: {grading['overlap_rate']:.2%}")
+
+    comparison = compute_human_vs_judge(grading_rows, judge_rows)
+    if comparison is None:
+        print("\nNo rows graded by both human and judge yet — comparison skipped.")
+        return
+
+    print(f"\n=== Human vs judge agreement (n={comparison['n']}) ===")
+    print(f"Mean absolute difference — relevance: {comparison['mae_relevance']:.2f}")
+    print(f"Mean absolute difference — realism: {comparison['mae_realism']:.2f}")
+    if comparison["overlap_agreement_rate"] is not None:
+        print(f"Agreement on overlaps_another: {comparison['overlap_agreement_rate']:.2%}")
 
 
 if __name__ == "__main__":
