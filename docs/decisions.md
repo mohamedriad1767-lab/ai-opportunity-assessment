@@ -45,3 +45,7 @@ Measured on the same 10-process eval set, holding the model fixed at claude-haik
 
 Compared v4.2 on claude-haiku-4-5 vs the newest available Haiku, claude-haiku-5-5, with the prompt and code guard both held fixed (one-variable-at-a-time). claude-haiku-5-5 scored better on judge relevance (4.63 -> 4.71), overlap rate (10.53% -> 4.76%), and AI Act error rate (10.53% -> 9.52%), but its no-fit accuracy regressed (100% -> 90%): it proposed use cases for "Forklift preventive maintenance", the deliberately physical no-fit test case, where claude-haiku-4-5 correctly returned zero. It is also not cheaper — note the cost figures for claude-haiku-5-5 reuse claude-haiku-4-5's per-token prices as a placeholder (its real pricing was not available to verify) and should be re-checked before this decision is revisited on cost grounds.
 Given the no-fit mechanism's entire purpose is to catch exactly the kind of process claude-haiku-5-5 got wrong, and its real cost is unverified, claude-haiku-4-5 stays the generator model. Revisit if claude-haiku-5-5's no-fit accuracy improves on a larger eval set or its pricing is confirmed favorable.
+
+## Gains are freed time, not cash
+
+Gains are valued as freed time, not cash savings: they become cash only if capacity is reduced or redeployed. Stated in the report and README limitations.
