@@ -17,12 +17,26 @@ class FakeBlock:
             setattr(self, key, value)
 
 
+class FakeUsage:
+    """A minimal stand-in for an Anthropic Usage object."""
+
+    def __init__(self, input_tokens: int, output_tokens: int):
+        self.input_tokens = input_tokens
+        self.output_tokens = output_tokens
+
+
 class FakeMessage:
     """A minimal stand-in for an Anthropic Message response."""
 
-    def __init__(self, content: list[FakeBlock], stop_reason: str = "tool_use"):
+    def __init__(
+        self,
+        content: list[FakeBlock],
+        stop_reason: str = "tool_use",
+        usage: FakeUsage | None = None,
+    ):
         self.content = content
         self.stop_reason = stop_reason
+        self.usage = usage or FakeUsage(input_tokens=0, output_tokens=0)
 
 
 class FakeMessagesResource:
@@ -177,3 +191,22 @@ def test_no_tool_use_block_is_treated_as_invalid_and_repaired(company, process):
 
     assert len(result) == 1
     assert client.messages.call_count == 2
+
+
+def test_stats_are_filled_after_one_repair(company, process):
+    """stats reflects 2 api_calls, 1 repair, first_attempt_valid=False, and summed tokens."""
+    client = FakeClient(
+        [
+            FakeMessage([invalid_tool_use_block()], usage=FakeUsage(100, 50)),
+            FakeMessage([valid_tool_use_block()], usage=FakeUsage(120, 60)),
+        ]
+    )
+    stats: dict = {}
+
+    generate_use_cases(company, process, client, sleep=no_op_sleep, stats=stats)
+
+    assert stats["api_calls"] == 2
+    assert stats["repair_attempts"] == 1
+    assert stats["first_attempt_valid"] is False
+    assert stats["input_tokens"] == 220
+    assert stats["output_tokens"] == 110

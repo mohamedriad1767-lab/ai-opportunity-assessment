@@ -143,11 +143,29 @@ def _build_repair_messages(
     return new_messages
 
 
+def _record_usage(response: anthropic.types.Message, stats_accumulator: dict) -> None:
+    """Add a response's token usage to the running stats_accumulator totals."""
+    usage = getattr(response, "usage", None)
+    if usage is not None:
+        stats_accumulator["input_tokens"] += getattr(usage, "input_tokens", 0) or 0
+        stats_accumulator["output_tokens"] += getattr(usage, "output_tokens", 0) or 0
+
+
+def _fill_stats(stats: dict, stats_accumulator: dict, first_attempt_valid: bool) -> None:
+    """Write the final stats_accumulator values into the caller's stats dict."""
+    stats["api_calls"] = stats_accumulator["api_calls"]
+    stats["repair_attempts"] = stats_accumulator["repair_attempts"]
+    stats["first_attempt_valid"] = first_attempt_valid
+    stats["input_tokens"] = stats_accumulator["input_tokens"]
+    stats["output_tokens"] = stats_accumulator["output_tokens"]
+
+
 def generate_use_cases(
     company: Company,
     process: Process,
     client: anthropic.Anthropic,
     sleep=time.sleep,
+    stats: dict | None = None,
 ) -> list[UseCase]:
     """Ask the model for 1-3 AI use cases for a process, via forced tool use.
 
@@ -156,12 +174,19 @@ def generate_use_cases(
     violations) by feeding the error back to the model, up to
     MAX_REPAIR_ATTEMPTS times. Raises GenerationError if generation still
     fails after that.
+
+    If stats is given, it is filled with: api_calls, repair_attempts,
+    first_attempt_valid (bool), input_tokens, output_tokens (summed across
+    all calls made for this process), whether generation succeeds or not.
     """
     messages = [{"role": "user", "content": build_user_prompt(company, process)}]
     last_error_text = ""
+    stats_accumulator = {"api_calls": 0, "repair_attempts": 0, "input_tokens": 0, "output_tokens": 0}
 
     for repair_attempt in range(MAX_REPAIR_ATTEMPTS + 1):
         response = _call_model(client, messages, sleep)
+        stats_accumulator["api_calls"] += 1
+        _record_usage(response, stats_accumulator)
         tool_use_block = _find_tool_use_block(response)
 
         if tool_use_block is None:
@@ -176,6 +201,8 @@ def generate_use_cases(
             except ValidationError as exc:
                 last_error_text = str(exc)
             else:
+                if stats is not None:
+                    _fill_stats(stats, stats_accumulator, first_attempt_valid=repair_attempt == 0)
                 return to_use_cases(batch, process.name)
 
         logger.warning(
@@ -184,7 +211,11 @@ def generate_use_cases(
             MAX_REPAIR_ATTEMPTS + 1,
             last_error_text,
         )
+        stats_accumulator["repair_attempts"] += 1
         messages = _build_repair_messages(messages, response, tool_use_block, last_error_text)
+
+    if stats is not None:
+        _fill_stats(stats, stats_accumulator, first_attempt_valid=False)
 
     raise GenerationError(
         f"Failed to generate valid use cases after {MAX_REPAIR_ATTEMPTS + 1} attempts: "
