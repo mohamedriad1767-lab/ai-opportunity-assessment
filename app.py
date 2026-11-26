@@ -16,8 +16,10 @@ from core.assumptions import Assumptions
 from core.business_case import compute_business_cases
 from core.generator import GenerationError, generate_use_cases, make_client
 from core.loader import load_company, load_processes, load_use_cases, validate_records
+from core.matrix import classify_quadrant
 from core.models import AIActLevel, Company, GDPRLevel, Process, UseCase, UseCaseType
 from core.scoring import DEFAULT_WEIGHTS, normalize_weights, score_use_cases, split_prohibited, validate_weights
+from viz.matrix_chart import build_matrix_figure
 
 load_dotenv()
 
@@ -311,8 +313,7 @@ def render_cas_usage_tab() -> None:
         for row_index, row in edited_df.iterrows():
             original = allowed[row_index]
             try:
-                merged = original.model_copy(update=row.to_dict())
-                validated = UseCase.model_validate(merged.model_dump())
+                validated = UseCase.model_validate({**original.model_dump(), **row.to_dict()})
             except ValidationError as exc:
                 edit_errors.append(f"Ligne {row_index} ({original.process_name}) : {exc}")
                 updated_use_cases.append(original)
@@ -375,8 +376,11 @@ def render_ponderation_tab() -> None:
 
     try:
         validate_weights(normalized_weights)
-    except ValueError as exc:
-        st.error(f"Pondérations invalides : {exc}")
+    except ValueError:
+        st.error(
+            "Pondérations invalides : la somme des pondérations de chaque axe doit être égale à 1. "
+            "Vérifiez vos curseurs (évitez de mettre tous les curseurs d'un même axe à 0)."
+        )
         return
 
     processes_by_name = {process.name: process for process in st.session_state.processes}
@@ -395,6 +399,13 @@ def render_ponderation_tab() -> None:
         st.info("Aucun cas d'usage classable (vérifiez les processus chargés).")
         return
 
+    st.subheader("Matrice valeur x faisabilité")
+    threshold_columns = st.columns(2)
+    with threshold_columns[0]:
+        value_threshold = st.slider("Seuil de valeur", 0, 100, 50, key="matrix_value_threshold")
+    with threshold_columns[1]:
+        feasibility_threshold = st.slider("Seuil de faisabilité", 0, 100, 50, key="matrix_feasibility_threshold")
+
     st.subheader("Classement")
     ranking_rows = [
         {
@@ -406,10 +417,16 @@ def render_ponderation_tab() -> None:
             "Risque": item.scores.risk,
             "Priorité": item.scores.priority,
             "Gain annuel (€)": round(item.annual_gain_eur),
+            "Quadrant": classify_quadrant(
+                item.scores.value, item.scores.feasibility, value_threshold, feasibility_threshold
+            ).value,
         }
         for item in scored
     ]
     st.dataframe(pd.DataFrame(ranking_rows), width="stretch")
+
+    matrix_figure = build_matrix_figure(scored, value_threshold, feasibility_threshold)
+    st.plotly_chart(matrix_figure, width="stretch")
 
     st.subheader("Business case détaillé")
     options = {
