@@ -18,8 +18,10 @@ from core.generator import GenerationError, generate_use_cases, make_client
 from core.loader import load_company, load_processes, load_use_cases, validate_records
 from core.matrix import classify_quadrant
 from core.models import AIActLevel, Company, GDPRLevel, Process, UseCase, UseCaseType
+from core.roadmap import WAVE_LABELS, build_roadmap
 from core.scoring import DEFAULT_WEIGHTS, normalize_weights, score_use_cases, split_prohibited, validate_weights
 from viz.matrix_chart import build_matrix_figure
+from viz.roadmap_chart import build_roadmap_figure
 
 load_dotenv()
 
@@ -427,6 +429,35 @@ def render_ponderation_tab() -> None:
 
     matrix_figure = build_matrix_figure(scored, value_threshold, feasibility_threshold)
     st.plotly_chart(matrix_figure, width="stretch")
+
+    st.subheader("Feuille de route en 3 vagues")
+    max_per_wave = st.number_input("Nombre maximum de cas par vague", min_value=1, value=3, step=1)
+    planned, archived = build_roadmap(scored, value_threshold, feasibility_threshold, max_per_wave)
+
+    if planned:
+        roadmap_figure = build_roadmap_figure(planned)
+        st.plotly_chart(roadmap_figure, width="stretch")
+
+        roadmap_rows = [
+            {
+                "Vague": WAVE_LABELS[item.wave],
+                "Cas d'usage": f"{item.scored_use_case.rank}. {item.scored_use_case.use_case.process_name}",
+                "Raison": item.reason,
+            }
+            for item in planned
+        ]
+        st.dataframe(pd.DataFrame(roadmap_rows), width="stretch")
+    else:
+        st.info("Aucun cas d'usage planifiable sur la feuille de route.")
+
+    with st.expander(f"Cas écartés ({len(archived)})"):
+        if not archived:
+            st.caption("Aucun cas écarté.")
+        else:
+            for item in archived:
+                st.markdown(
+                    f"**{item.scored_use_case.rank}. {item.scored_use_case.use_case.process_name}** — {item.reason}"
+                )
 
     st.subheader("Business case détaillé")
     options = {
