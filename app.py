@@ -5,6 +5,7 @@ functions from core/, and renders their outputs. All formulas (scoring,
 cost, business case) and all LLM calls live in core/.
 """
 
+import io
 import os
 
 import pandas as pd
@@ -20,6 +21,7 @@ from core.matrix import classify_quadrant
 from core.models import AIActLevel, Company, GDPRLevel, Process, UseCase, UseCaseType
 from core.roadmap import WAVE_LABELS, build_roadmap
 from core.scoring import DEFAULT_WEIGHTS, normalize_weights, score_use_cases, split_prohibited, validate_weights
+from export.pdf_report import build_report
 from viz.matrix_chart import build_matrix_figure
 from viz.roadmap_chart import build_roadmap_figure
 
@@ -458,6 +460,27 @@ def render_ponderation_tab() -> None:
                 st.markdown(
                     f"**{item.scored_use_case.rank}. {item.scored_use_case.use_case.process_name}** — {item.reason}"
                 )
+
+    _, excluded_use_cases = split_prohibited(st.session_state.use_cases)
+    report_buffer = io.BytesIO()
+    build_report(
+        company=st.session_state.company,
+        processes=st.session_state.processes,
+        scored_use_cases=scored,
+        excluded=excluded_use_cases,
+        no_fit=st.session_state.no_fit_reasons,
+        roadmap_planned=planned,
+        roadmap_archived=archived,
+        assumptions=st.session_state.assumptions,
+        weights=normalized_weights,
+        output_path=report_buffer,
+    )
+    st.download_button(
+        "Télécharger le rapport PDF",
+        data=report_buffer.getvalue(),
+        file_name="rapport_evaluation_ia.pdf",
+        mime="application/pdf",
+    )
 
     st.subheader("Business case détaillé")
     options = {

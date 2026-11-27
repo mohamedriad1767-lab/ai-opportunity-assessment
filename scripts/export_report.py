@@ -1,0 +1,54 @@
+"""Build the demo PDF report from the phase-0 use cases and save it to docs/demo_report.pdf."""
+
+import json
+import os
+import sys
+
+# Allow running this script directly (python scripts/export_report.py) by
+# making the project root importable regardless of the current working directory.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from core.assumptions import Assumptions
+from core.loader import load_company, load_processes
+from core.models import UseCase
+from core.roadmap import build_roadmap
+from core.scoring import DEFAULT_WEIGHTS, score_use_cases, split_prohibited
+from export.pdf_report import build_report
+
+OUTPUT_PATH = "docs/demo_report.pdf"
+HOURLY_COST_EUR = 35
+
+
+def main() -> None:
+    sys.stdout.reconfigure(encoding="utf-8")
+
+    company = load_company("data/demo_company_profile.json")
+    processes = load_processes("data/demo_company.csv")
+
+    with open("data/phase0_use_cases.json", encoding="utf-8") as f:
+        raw_use_cases = json.load(f)
+    use_cases = [UseCase(**item) for item in raw_use_cases]
+
+    processes_by_name = {p.name: p for p in processes}
+    _, excluded = split_prohibited(use_cases)
+    scored, _ = score_use_cases(use_cases, processes_by_name, HOURLY_COST_EUR)
+    planned, archived = build_roadmap(scored)
+
+    build_report(
+        company=company,
+        processes=processes,
+        scored_use_cases=scored,
+        excluded=excluded,
+        no_fit=[],
+        roadmap_planned=planned,
+        roadmap_archived=archived,
+        assumptions=Assumptions(),
+        weights=DEFAULT_WEIGHTS,
+        output_path=OUTPUT_PATH,
+    )
+
+    print(f"Wrote {OUTPUT_PATH}")
+
+
+if __name__ == "__main__":
+    main()
