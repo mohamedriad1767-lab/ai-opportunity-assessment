@@ -15,11 +15,14 @@ from core.config import MODEL_NAME, PRICE_INPUT_PER_MTOK_USD, PRICE_OUTPUT_PER_M
 # v3 -> v4.1 : prompt changes (no-fit option, AI Act guidance, overlap rule)
 # v4.1 -> v4.2 (same model): the code guard against risk-worded no_fit_reason
 # v4.2/4.5 -> v4.2/<new haiku>: the generator model, prompt and code held fixed
+# v4.2/4.5 -> v4.3/4.5: prompt-only change (French description/justification/
+# criteria_rationale), generator model and code guard held fixed
 RUNS = [
     ("v3", "claude-haiku-4-5"),
     ("v4.1", "claude-haiku-4-5"),
     ("v4.2", "claude-haiku-4-5"),
     ("v4.2", "claude-haiku-5-5"),
+    ("v4.3", "claude-haiku-4-5"),
 ]
 EVAL_PROCESSES_PATH = "evals/eval_processes.csv"
 TARGET_PROCESS_FOR_AI_ACT_DUMP = "Annual performance review drafting and calibration"

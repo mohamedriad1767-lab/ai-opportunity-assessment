@@ -1,6 +1,5 @@
-"""Build the value x feasibility matrix for the 5 phase-0 use cases and save it as a PNG."""
+"""Build the value x feasibility matrix for the French demo use cases and save it as a PNG."""
 
-import json
 import os
 import sys
 
@@ -8,8 +7,7 @@ import sys
 # making the project root importable regardless of the current working directory.
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from core.loader import load_processes
-from core.models import UseCase
+from core.loader import load_demo_cache, load_processes
 from core.scoring import score_use_cases
 from viz.matrix_chart import build_matrix_figure
 
@@ -20,11 +18,8 @@ HOURLY_COST_EUR = 35
 def main() -> None:
     sys.stdout.reconfigure(encoding="utf-8")
 
-    with open("data/phase0_use_cases.json", encoding="utf-8") as f:
-        raw_use_cases = json.load(f)
-    use_cases = [UseCase(**item) for item in raw_use_cases]
-
-    processes = {p.name: p for p in load_processes("data/demo_company.csv")}
+    use_cases, _ = load_demo_cache("data/demo_cache/use_cases_fr.json")
+    processes = {p.name: p for p in load_processes("data/demo_company_fr.csv")}
 
     scored, _ = score_use_cases(use_cases, processes, HOURLY_COST_EUR)
 

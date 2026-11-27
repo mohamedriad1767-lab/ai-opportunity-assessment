@@ -77,3 +77,48 @@ def test_setting_priority_risk_weight_to_zero_ranks_cv_screening_above_monthly_r
     assert ranks_by_process["CV screening for open positions"] < ranks_by_process[
         "Monthly management reporting consolidation"
     ]
+
+
+# Demo mode: no API key in the environment. setenv (not delenv) is required —
+# app.py calls load_dotenv() on every run, which would otherwise silently
+# restore the real key from .env (load_dotenv never overrides a key that is
+# already present in os.environ, even an empty one).
+def test_app_runs_without_exception_with_no_api_key(monkeypatch):
+    """The app runs end to end with no exception when no API key is configured."""
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "")
+    at = AppTest.from_file(APP_PATH)
+    at.run(timeout=RUN_TIMEOUT)
+
+    assert not at.exception
+
+
+def test_ranking_is_visible_on_first_load_with_no_click(monkeypatch):
+    """The French demo company and cached use cases are auto-loaded: the ranking
+    table is populated immediately, with no button click."""
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "")
+    at = AppTest.from_file(APP_PATH)
+    at.run(timeout=RUN_TIMEOUT)
+
+    assert not at.exception
+    ranking_df = _ranking_dataframe(at)
+    assert len(ranking_df.value) > 0
+
+
+def test_generate_with_ai_button_is_disabled_without_api_key(monkeypatch):
+    """The 'Générer avec l'IA' button is disabled when no API key is configured."""
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "")
+    at = AppTest.from_file(APP_PATH)
+    at.run(timeout=RUN_TIMEOUT)
+
+    generate_button = next(b for b in at.button if b.label == "Générer avec l'IA")
+    assert generate_button.disabled
+
+
+def test_pdf_download_button_is_present_on_first_load(monkeypatch):
+    """The PDF download button is present immediately, with no button click."""
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "")
+    at = AppTest.from_file(APP_PATH)
+    at.run(timeout=RUN_TIMEOUT)
+
+    assert not at.exception
+    assert any(b.label == "Télécharger le rapport PDF" for b in at.download_button)

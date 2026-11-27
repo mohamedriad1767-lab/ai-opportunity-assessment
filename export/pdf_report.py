@@ -70,7 +70,7 @@ SUB_WEIGHT_LABELS = {
     "feasibility": {
         "data": "Qualité des données",
         "complexity": "Complexité technique (inversée)",
-        "market": "Off-the-shelf",
+        "market": "Solution du marché",
     },
     "risk": {"ai_act": "AI Act", "gdpr": "RGPD", "adoption": "Risque d'adoption"},
     "priority": {"value": "Valeur", "feasibility": "Faisabilité", "risk": "Risque"},
@@ -368,11 +368,13 @@ def _roadmap_page(
             rows.append(
                 [
                     WAVE_LABELS[item.wave],
-                    f"{item.scored_use_case.rank}. {item.scored_use_case.use_case.process_name}",
+                    _cell(
+                        f"{item.scored_use_case.rank}. {item.scored_use_case.use_case.process_name}", styles
+                    ),
                     _cell(item.reason, styles),
                 ]
             )
-        table = Table(rows, colWidths=[30 * mm, 60 * mm, 80 * mm], repeatRows=1)
+        table = Table(rows, colWidths=[25 * mm, 70 * mm, 75 * mm], repeatRows=1)
         table.setStyle(_table_style())
         story.append(table)
     else:
@@ -385,7 +387,9 @@ def _roadmap_page(
         for item in roadmap_archived:
             rows.append(
                 [
-                    f"{item.scored_use_case.rank}. {item.scored_use_case.use_case.process_name}",
+                    _cell(
+                        f"{item.scored_use_case.rank}. {item.scored_use_case.use_case.process_name}", styles
+                    ),
                     _cell(item.reason, styles),
                 ]
             )

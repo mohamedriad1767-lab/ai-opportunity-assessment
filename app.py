@@ -16,7 +16,7 @@ from pydantic import ValidationError
 from core.assumptions import Assumptions
 from core.business_case import compute_business_cases
 from core.generator import GenerationError, generate_use_cases, make_client
-from core.loader import load_company, load_processes, load_use_cases, validate_records
+from core.loader import load_company, load_demo_cache, load_processes, load_use_cases, validate_records
 from core.matrix import classify_quadrant
 from core.models import AIActLevel, Company, GDPRLevel, Process, UseCase, UseCaseType
 from core.roadmap import WAVE_LABELS, build_roadmap
@@ -32,6 +32,12 @@ DEMO_COMPANY_PATH = "data/demo_company_profile.json"
 DEMO_PROCESSES_PATH = "data/demo_company.csv"
 DEMO_USE_CASES_PATH = "data/phase0_use_cases.json"
 
+# French demo content, auto-loaded on first app load (see _init_session_state)
+# so a visitor without an API key sees a full, pre-computed demo immediately.
+DEMO_COMPANY_FR_PATH = "data/demo_company_profile_fr.json"
+DEMO_PROCESSES_FR_PATH = "data/demo_company_fr.csv"
+DEMO_CACHE_FR_PATH = "data/demo_cache/use_cases_fr.json"
+
 AXIS_LABELS = {
     "value": "Valeur",
     "feasibility": "Faisabilité",
@@ -43,7 +49,7 @@ SUB_WEIGHT_LABELS = {
     "feasibility": {
         "data": "Qualité des données",
         "complexity": "Complexité technique (inversée)",
-        "market": "Off-the-shelf",
+        "market": "Solution du marché",
     },
     "risk": {"ai_act": "AI Act", "gdpr": "RGPD", "adoption": "Risque d'adoption"},
     "priority": {"value": "Valeur", "feasibility": "Faisabilité", "risk": "Risque"},
@@ -69,16 +75,31 @@ def _cached_load_use_cases(path: str) -> list[UseCase]:
     return load_use_cases(path)
 
 
+@st.cache_data
+def _cached_load_demo_cache(path: str) -> tuple[list[UseCase], list[tuple[str, str]]]:
+    """Load the cached French demo generation results (cached — file loading only)."""
+    return load_demo_cache(path)
+
+
 def _init_session_state() -> None:
-    """Initialize all session_state keys used across tabs, once."""
+    """Initialize all session_state keys used across tabs, once.
+
+    The French demo company, its processes, and the pre-computed (cached)
+    use cases are loaded automatically here, so a first-time visitor sees a
+    full demo (ranking, matrix, roadmap, PDF button) with no click and no
+    API key required. Every value can still be replaced afterwards, from the
+    "Processus" / "Cas d'usage" tabs.
+    """
     if "company" not in st.session_state:
-        st.session_state.company = _cached_load_company(DEMO_COMPANY_PATH)
+        st.session_state.company = _cached_load_company(DEMO_COMPANY_FR_PATH)
     if "assumptions" not in st.session_state:
         st.session_state.assumptions = Assumptions()
     if "processes" not in st.session_state:
-        st.session_state.processes = []
+        st.session_state.processes = _cached_load_processes(DEMO_PROCESSES_FR_PATH)
     if "use_cases" not in st.session_state:
-        st.session_state.use_cases = []
+        use_cases, no_fit_reasons = _cached_load_demo_cache(DEMO_CACHE_FR_PATH)
+        st.session_state.use_cases = use_cases
+        st.session_state.no_fit_reasons = no_fit_reasons
     if "no_fit_reasons" not in st.session_state:
         st.session_state.no_fit_reasons = []
 
@@ -242,35 +263,37 @@ def render_cas_usage_tab() -> None:
 
     col1, col2 = st.columns(2)
     with col1:
-        if api_key:
-            if st.button("Générer avec l'IA"):
-                if not st.session_state.processes:
-                    st.warning("Chargez d'abord des processus dans l'onglet «Processus».")
-                else:
-                    client = make_client(api_key)
-                    all_use_cases: list[UseCase] = []
-                    no_fit_reasons: list[tuple[str, str]] = []
-                    generation_errors: list[str] = []
-                    progress_bar = st.progress(0)
-                    processes = st.session_state.processes
-                    for index, process in enumerate(processes):
-                        try:
-                            result = generate_use_cases(st.session_state.company, process, client)
-                            all_use_cases.extend(result.use_cases)
-                            if result.no_fit_reason:
-                                no_fit_reasons.append((process.name, result.no_fit_reason))
-                        except GenerationError as exc:
-                            generation_errors.append(f"{process.name} : {exc}")
-                        progress_bar.progress((index + 1) / len(processes))
-                    st.session_state.use_cases = all_use_cases
-                    st.session_state.no_fit_reasons = no_fit_reasons
-                    for error in generation_errors:
-                        st.error(error)
-        else:
-            st.info(
-                "Clé API Anthropic manquante (ANTHROPIC_API_KEY). Ajoutez-la dans votre "
-                "fichier .env pour activer la génération par IA."
-            )
+        generate_clicked = st.button(
+            "Générer avec l'IA",
+            disabled=not api_key,
+            help=None
+            if api_key
+            else "Clé API Anthropic manquante (ANTHROPIC_API_KEY). Ajoutez-la dans votre fichier .env "
+            "pour activer la génération par IA.",
+        )
+        if generate_clicked:
+            if not st.session_state.processes:
+                st.warning("Chargez d'abord des processus dans l'onglet «Processus».")
+            else:
+                client = make_client(api_key)
+                all_use_cases: list[UseCase] = []
+                no_fit_reasons: list[tuple[str, str]] = []
+                generation_errors: list[str] = []
+                progress_bar = st.progress(0)
+                processes = st.session_state.processes
+                for index, process in enumerate(processes):
+                    try:
+                        result = generate_use_cases(st.session_state.company, process, client)
+                        all_use_cases.extend(result.use_cases)
+                        if result.no_fit_reason:
+                            no_fit_reasons.append((process.name, result.no_fit_reason))
+                    except GenerationError as exc:
+                        generation_errors.append(f"{process.name} : {exc}")
+                    progress_bar.progress((index + 1) / len(processes))
+                st.session_state.use_cases = all_use_cases
+                st.session_state.no_fit_reasons = no_fit_reasons
+                for error in generation_errors:
+                    st.error(error)
     with col2:
         if st.button("Charger les cas de démo"):
             st.session_state.use_cases = _cached_load_use_cases(DEMO_USE_CASES_PATH)
@@ -509,9 +532,25 @@ def render_ponderation_tab() -> None:
             st.metric("Retour sur investissement", fmt_months(case.payback_months))
 
 
+def _render_tab_safely(render_fn) -> None:
+    """Run a tab's render function, turning any exception into a French error
+    message instead of letting a stack trace reach the user.
+    """
+    try:
+        render_fn()
+    except Exception as exc:  # noqa: BLE001 - last-resort UI guard, intentionally broad
+        st.error(f"Une erreur inattendue est survenue dans cet onglet : {exc}")
+
+
 def main() -> None:
     st.set_page_config(page_title="AI Opportunity Assessment", layout="wide")
     st.title("AI Opportunity Assessment")
+
+    if not os.environ.get("ANTHROPIC_API_KEY"):
+        st.info(
+            "Mode démo : résultats pré-calculés pour une entreprise fictive. "
+            "Aucun appel à l'IA n'est effectué."
+        )
 
     _init_session_state()
 
@@ -520,13 +559,13 @@ def main() -> None:
     )
 
     with tab_contexte:
-        render_contexte_tab()
+        _render_tab_safely(render_contexte_tab)
     with tab_processus:
-        render_processus_tab()
+        _render_tab_safely(render_processus_tab)
     with tab_cas_usage:
-        render_cas_usage_tab()
+        _render_tab_safely(render_cas_usage_tab)
     with tab_ponderation:
-        render_ponderation_tab()
+        _render_tab_safely(render_ponderation_tab)
 
 
 main()

@@ -28,6 +28,19 @@ QUADRANT_CORNERS = {
 MAX_MARKER_SIZE = 50
 QUICK_WIN_SHADING_COLOR = "rgba(0, 114, 178, 0.08)"
 
+# The rank -> name caption is a variable-length list (one line per use case),
+# so the figure's bottom margin and total height scale with how many use
+# cases are plotted, instead of a fixed size that would clip a large
+# portfolio or waste space on a small one. The plot area itself (where the
+# bubbles live) always keeps the same height, so the chart's proportions
+# don't change with portfolio size.
+PLOT_AREA_HEIGHT_PX = 650
+MARGIN_TOP_PX = 100
+CAPTION_HEADER_HEIGHT_PX = 20
+CAPTION_LINE_HEIGHT_PX = 16
+CAPTION_TOP_GAP_PX = 20
+CAPTION_BOTTOM_PADDING_PX = 20
+
 
 def _size_ref(scored_use_cases: list[ScoredUseCase]) -> float:
     """Plotly's recommended sizeref so the largest bubble fits MAX_MARKER_SIZE."""
@@ -40,6 +53,20 @@ def _rank_to_name_caption(scored_use_cases: list[ScoredUseCase]) -> str:
     ordered = sorted(scored_use_cases, key=lambda item: item.rank)
     lines = [f"{item.rank}. {item.use_case.process_name}" for item in ordered]
     return "<b>Légende des rangs</b><br>" + "<br>".join(lines)
+
+
+def _layout_dimensions(num_items: int) -> tuple[float, float, float]:
+    """Return (total_height_px, bottom_margin_px, caption_y_paper_fraction).
+
+    Sized so the rank -> name caption (CAPTION_HEADER_HEIGHT_PX plus
+    CAPTION_LINE_HEIGHT_PX per use case) always fits below the plot area,
+    whatever the portfolio size.
+    """
+    caption_height = CAPTION_HEADER_HEIGHT_PX + CAPTION_LINE_HEIGHT_PX * num_items
+    margin_bottom = CAPTION_TOP_GAP_PX + caption_height + CAPTION_BOTTOM_PADDING_PX
+    total_height = MARGIN_TOP_PX + PLOT_AREA_HEIGHT_PX + margin_bottom
+    caption_y = -CAPTION_TOP_GAP_PX / PLOT_AREA_HEIGHT_PX
+    return total_height, margin_bottom, caption_y
 
 
 def build_matrix_figure(
@@ -140,11 +167,13 @@ def build_matrix_figure(
             opacity=0.9,
         )
 
+    total_height, margin_bottom, caption_y = _layout_dimensions(len(scored_use_cases))
+
     fig.add_annotation(
         xref="paper",
         yref="paper",
         x=0,
-        y=-0.3,
+        y=caption_y,
         xanchor="left",
         yanchor="top",
         align="left",
@@ -164,7 +193,7 @@ def build_matrix_figure(
         xaxis=dict(title="Faisabilité", range=[0, 100], showgrid=True, gridcolor="#eeeeee"),
         yaxis=dict(title="Valeur", range=[0, 100], showgrid=True, gridcolor="#eeeeee"),
         legend_title_text="Niveau AI Act",
-        margin=dict(b=300, t=100),
-        height=900,
+        margin=dict(b=margin_bottom, t=MARGIN_TOP_PX),
+        height=total_height,
     )
     return fig

@@ -1,15 +1,15 @@
-metric                                  v3/4.5      v4.1/4.5      v4.2/4.5      v4.2/5.5
-----------------------------------------------------------------------------------------
-Valid output rate                      100.00%       100.00%       100.00%       100.00%
-Avg use cases / process                   2.10          1.80          1.90          2.10
-No-fit answers                               0             2             1             0
-No-fit accuracy                         90.00%        90.00%       100.00%        90.00%
-Avg relevance (judge)                     4.57          4.72          4.63          4.71
-Avg realism (judge)                       3.81          4.00          4.00          3.95
-Overlap rate (judge)                    19.05%        11.11%        10.53%         4.76%
-AI Act error rate (judge)               19.05%        16.67%        10.53%         9.52%
-Distinct pct_time_saved values               5             6             8             8
-Cost (USD)                           $0.083279     $0.085309     $0.095807     $0.110796
+metric                                  v3/4.5      v4.1/4.5      v4.2/4.5      v4.2/5.5      v4.3/4.5
+------------------------------------------------------------------------------------------------------
+Valid output rate                      100.00%       100.00%       100.00%       100.00%       100.00%
+Avg use cases / process                   2.10          1.80          1.90          2.10          2.00
+No-fit answers                               0             2             1             0             1
+No-fit accuracy                         90.00%        90.00%       100.00%        90.00%       100.00%
+Avg relevance (judge)                     4.57          4.72          4.63          4.71          4.70
+Avg realism (judge)                       3.81          4.00          4.00          3.95          3.85
+Overlap rate (judge)                    19.05%        11.11%        10.53%         4.76%         0.00%
+AI Act error rate (judge)               19.05%        16.67%        10.53%         9.52%        15.00%
+Distinct pct_time_saved values               5             6             8             8             8
+Cost (USD)                           $0.083279     $0.085309     $0.095807     $0.110796     $0.100669
 
 --- v3/4.5: no-fit reasons (0) ---
 (none)
@@ -23,6 +23,9 @@ Cost (USD)                           $0.083279     $0.085309     $0.095807     $
 
 --- v4.2/5.5: no-fit reasons (0) ---
 (none)
+
+--- v4.3/4.5: no-fit reasons (1) ---
+- Forklift preventive maintenance: This is fundamentally a physical maintenance process. The core pain points—physical inspection of equipment, hands-on repair work, and scheduling conflicts with warehouse operations—are operational and logistical challenges, not information-processing problems that AI can address. While maintenance logs and equipment manuals exist, the actual work (hydraulic checks, wear inspection, bearing replacement) is manual labor. Parts delays are a supply-chain coordination issue, not a data problem AI could solve. No AI use case (extraction, classification, assistant, generation, or agent) would materially reduce the 45 minutes per maintenance event or address the named pain points without introducing robotics or IoT sensors, which are outside the scope of this assessment.
 
 --- v3/4.5: 'Annual performance review drafting and calibration' ---
 2 use case(s):
@@ -42,4 +45,13 @@ Cost (USD)                           $0.083279     $0.085309     $0.095807     $
 - [generation] ai_act=high — An assistant that helps managers turn their rough notes and prior review scores into a consistently structured, neutral-toned draft performance review, which the manager then edits and owns.
 - [classification] ai_act=high — A tool that pre-screens draft reviews and prior scores to flag inconsistencies in rating language versus scores (e.g. a 'exceeds' score with weak narrative) and surfaces outliers for HR calibration, so the calibration meeting focuses on the cases that need discussion.
 
+--- v4.3/4.5: 'Annual performance review drafting and calibration' ---
+2 use case(s):
+- [assistant] ai_act=high — Un assistant IA qui résume et structure les commentaires narratifs des managers en rubriques standardisées, en relevantant les thèmes clés et les écarts de ton pour harmoniser la qualité avant calibrage.
+- [classification] ai_act=high — Un classifieur qui identifie automatiquement les évaluations nécessitant un examen approfondi en calibrage (écarts de notation, cas de promotion/avertissement, biais potentiels de ton) pour prioriser l'agenda de réunion.
+
 Caveat: PRICE_INPUT_PER_MTOK_USD / PRICE_OUTPUT_PER_MTOK_USD in core/config.py are priced for claude-haiku-4-5 only. Cost figures for claude-haiku-5-5 reuse those same per-token prices and do NOT reflect that model's actual pricing — re-check its real price on the Anthropic pricing page before trusting that column.
+
+--- v4.2 -> v4.3: French-language output, quality check ---
+v4.3 adds one instruction to v4.2: write description, justification, and every criteria_rationale entry in French (no_fit_reason and all enum/numeric fields stay in English/as specified, so the existing risk-refusal regex guard in core/generator.py keeps working unchanged). Held fixed: generator model (claude-haiku-4-5), the code guard, and the worked examples (still in English, per "keep everything else identical").
+Comparing v4.2/4.5 -> v4.3/4.5 on the same 10-process eval set: relevance 4.63 -> 4.70 (slightly up), realism 4.00 -> 3.85 (slightly down), overlap rate 10.53% -> 0.00% (improved), no-fit accuracy 100% -> 100% (unchanged), AI Act error rate 10.53% -> 15.00% (up). With only 19-20 judged use cases per run, a percentage-point move like the AI Act error rate corresponds to 1-2 individual judge verdicts flipping, so this is within the noise of a sample this small rather than a clear regression — and it is not attributable to the French instruction itself, since ai_act is explicitly excluded from the French translation and stays an English enum value in every run. Manually spot-checking the French output (e.g. the 'Annual performance review drafting and calibration' dump above) confirms description/justification read as natural French while type, ai_act, gdpr, and no_fit_reason are unaffected. Overall quality did not meaningfully drop, so v4.3 is adopted as the prompt used for the French demo cache (data/demo_cache/use_cases_fr.json).

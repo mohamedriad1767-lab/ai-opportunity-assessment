@@ -1,6 +1,5 @@
-"""Build the demo PDF report from the phase-0 use cases and save it to docs/demo_report.pdf."""
+"""Build the demo PDF report from the French demo cache and save it to docs/demo_report.pdf."""
 
-import json
 import os
 import sys
 
@@ -9,8 +8,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from core.assumptions import Assumptions
-from core.loader import load_company, load_processes
-from core.models import UseCase
+from core.loader import load_company, load_demo_cache, load_processes
 from core.roadmap import build_roadmap
 from core.scoring import DEFAULT_WEIGHTS, score_use_cases, split_prohibited
 from export.pdf_report import build_report
@@ -22,12 +20,9 @@ HOURLY_COST_EUR = 35
 def main() -> None:
     sys.stdout.reconfigure(encoding="utf-8")
 
-    company = load_company("data/demo_company_profile.json")
-    processes = load_processes("data/demo_company.csv")
-
-    with open("data/phase0_use_cases.json", encoding="utf-8") as f:
-        raw_use_cases = json.load(f)
-    use_cases = [UseCase(**item) for item in raw_use_cases]
+    company = load_company("data/demo_company_profile_fr.json")
+    processes = load_processes("data/demo_company_fr.csv")
+    use_cases, no_fit = load_demo_cache("data/demo_cache/use_cases_fr.json")
 
     processes_by_name = {p.name: p for p in processes}
     _, excluded = split_prohibited(use_cases)
@@ -39,7 +34,7 @@ def main() -> None:
         processes=processes,
         scored_use_cases=scored,
         excluded=excluded,
-        no_fit=[],
+        no_fit=no_fit,
         roadmap_planned=planned,
         roadmap_archived=archived,
         assumptions=Assumptions(),

@@ -6,7 +6,7 @@ score or rank anything.
 
 from core.models import Company, Process
 
-PROMPT_VERSION = "v4.2"
+PROMPT_VERSION = "v4.3"
 
 SYSTEM_PROMPT = """You are a senior AI strategy consultant at a Big Four firm. \
 You have reviewed hundreds of AI opportunity assessments for mid-size and \
@@ -45,6 +45,10 @@ validation.
 - Never propose emotion recognition of employees, or anything else prohibited \
 under the EU AI Act.
 - Do NOT score or rank the use cases. Only propose and justify them.
+- Write description, justification, and every entry in criteria_rationale in \
+French. Keep no_fit_reason, and every other field (type, off_the_shelf, \
+ai_act, gdpr, and all numeric ratings), exactly as specified elsewhere in \
+this prompt — do not translate enum values or field names.
 
 For each use case, also rate these criteria on a 1-5 scale, anchored as follows:
 - quality_impact: 1 = no improvement, or risk of lower-quality output than today's \
