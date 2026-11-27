@@ -21,6 +21,7 @@ from core.matrix import classify_quadrant
 from core.models import AIActLevel, Company, GDPRLevel, Process, UseCase, UseCaseType
 from core.roadmap import WAVE_LABELS, build_roadmap
 from core.scoring import DEFAULT_WEIGHTS, normalize_weights, score_use_cases, split_prohibited, validate_weights
+from export.formatting import fmt_eur, fmt_months, fmt_pct
 from export.pdf_report import build_report
 from viz.matrix_chart import build_matrix_figure
 from viz.roadmap_chart import build_roadmap_figure
@@ -420,7 +421,7 @@ def render_ponderation_tab() -> None:
             "Faisabilité": item.scores.feasibility,
             "Risque": item.scores.risk,
             "Priorité": item.scores.priority,
-            "Gain annuel (€)": round(item.annual_gain_eur),
+            "Gain annuel": fmt_eur(item.annual_gain_eur),
             "Quadrant": classify_quadrant(
                 item.scores.value, item.scores.feasibility, value_threshold, feasibility_threshold
             ).value,
@@ -498,15 +499,14 @@ def render_ponderation_tab() -> None:
     scenario_columns = st.columns(3)
     for column, scenario in zip(scenario_columns, ("pessimistic", "base", "optimistic")):
         case = cases[scenario]
-        payback = f"{case.payback_months:.1f} mois" if case.payback_months is not None else "jamais remboursé"
         with column:
             st.markdown(f"**{SCENARIO_LABELS[scenario]}**")
-            st.metric("Gain annuel", f"{case.annual_gain_eur:,.0f} €")
-            st.metric("Coût initial", f"{case.one_off_cost_eur:,.0f} €")
-            st.metric("Coût annuel", f"{case.annual_run_cost_eur:,.0f} €")
-            st.metric("TCO", f"{case.tco_eur:,.0f} €")
-            st.metric("ROI", f"{case.roi:.1%}")
-            st.metric("Retour sur investissement", payback)
+            st.metric("Gain annuel", fmt_eur(case.annual_gain_eur))
+            st.metric("Coût initial", fmt_eur(case.one_off_cost_eur))
+            st.metric("Coût annuel", fmt_eur(case.annual_run_cost_eur))
+            st.metric("TCO", fmt_eur(case.tco_eur))
+            st.metric("ROI", fmt_pct(case.roi))
+            st.metric("Retour sur investissement", fmt_months(case.payback_months))
 
 
 def main() -> None:

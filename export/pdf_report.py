@@ -34,6 +34,7 @@ from core.assumptions import Assumptions
 from core.business_case import compute_business_cases
 from core.models import AIActLevel, Company, Process, ScoredUseCase, UseCase
 from core.roadmap import WAVE_LABELS, RoadmapItem
+from export.formatting import NBSP, fmt_eur, fmt_months, fmt_pct
 from viz.matrix_chart import build_matrix_figure
 from viz.roadmap_chart import build_roadmap_figure
 
@@ -46,6 +47,51 @@ FONT_BOLD = "Vera-Bold"
 
 AI_ACT_LABELS = {"minimal": "Minimal", "limited": "Limité", "high": "Élevé"}
 GDPR_LABELS = {"none": "Aucune", "indirect": "Indirecte", "sensitive": "Sensible"}
+
+CRITERION_LABELS = {
+    "quality_impact": "Impact qualité",
+    "strategic_alignment": "Alignement stratégique",
+    "data_quality": "Qualité des données",
+    "technical_complexity": "Complexité technique",
+    "adoption_risk": "Risque d'adoption",
+    "off_the_shelf": "Solution sur étagère",
+    "ai_act": "Niveau AI Act",
+    "gdpr": "Sensibilité RGPD",
+}
+
+AXIS_LABELS = {
+    "value": "Valeur",
+    "feasibility": "Faisabilité",
+    "risk": "Risque",
+    "priority": "Priorité globale",
+}
+SUB_WEIGHT_LABELS = {
+    "value": {"gain": "Gain", "quality": "Qualité", "alignment": "Alignement stratégique"},
+    "feasibility": {
+        "data": "Qualité des données",
+        "complexity": "Complexité technique (inversée)",
+        "market": "Off-the-shelf",
+    },
+    "risk": {"ai_act": "AI Act", "gdpr": "RGPD", "adoption": "Risque d'adoption"},
+    "priority": {"value": "Valeur", "feasibility": "Faisabilité", "risk": "Risque"},
+}
+
+# (label, formatter) for each Assumptions field, in display order.
+ASSUMPTION_FIELDS: list[tuple[str, str, str]] = [
+    ("daily_rate_eur", "Taux journalier de l'équipe projet", "eur"),
+    ("off_the_shelf_build_factor", "Facteur de build pour un outil sur étagère", "pct"),
+    ("integration_days_per_data_source", "Jours d'intégration par source de données", "days"),
+    ("annual_license_eur_off_the_shelf", "Licence annuelle (outil sur étagère)", "eur"),
+    ("llm_cost_per_occurrence_eur", "Coût LLM par occurrence", "eur_precise"),
+    ("maintenance_pct_of_build", "Maintenance annuelle (% du coût de build)", "pct"),
+    ("horizon_years", "Horizon du business case", "years"),
+]
+
+RISK_MITIGATIONS = {
+    AIActLevel.HIGH: "mise en conformité Annexe III avant lancement, jamais en vague 1",
+    AIActLevel.LIMITED: "information des utilisateurs, Art. 50",
+    AIActLevel.MINIMAL: "aucune mesure de conformité spécifique requise",
+}
 
 FRENCH_MONTHS = [
     "janvier", "février", "mars", "avril", "mai", "juin",
@@ -102,6 +148,11 @@ def _build_styles() -> dict[str, ParagraphStyle]:
 def _cell(text: str, styles: dict[str, ParagraphStyle]) -> Paragraph:
     """Wrap a table cell's text in a Paragraph so it word-wraps inside its column."""
     return Paragraph(text, styles["cell"])
+
+
+def _fmt_score(value: float) -> str:
+    """Format a 0-100 score with a French comma decimal, e.g. 86.8 -> '86,8'."""
+    return f"{value:.1f}".replace(".", ",")
 
 
 def _table_style(header: bool = True) -> TableStyle:
@@ -209,29 +260,35 @@ def _synthesis_page(
         exclusion_bits.append(f"{len(no_fit)} processus sans cas d'usage retenu")
     exclusion_note = f" (dont {', '.join(exclusion_bits)})" if exclusion_bits else ""
 
-    wave1_base_cases = [
-        _wave1_business_case(item, processes, company.hourly_cost_eur, assumptions) for item in wave1
+    wave1_cases = [
+        _wave1_business_cases(item, processes, company.hourly_cost_eur, assumptions) for item in wave1
     ]
-    wave1_gain = sum(case.annual_gain_eur for case in wave1_base_cases)
-    wave1_cost = sum(case.one_off_cost_eur for case in wave1_base_cases)
+    wave1_gain_pessimistic = sum(cases["pessimistic"].annual_gain_eur for cases in wave1_cases)
+    wave1_gain_base = sum(cases["base"].annual_gain_eur for cases in wave1_cases)
+    wave1_gain_optimistic = sum(cases["optimistic"].annual_gain_eur for cases in wave1_cases)
+    wave1_cost = sum(cases["base"].one_off_cost_eur for cases in wave1_cases)
     wave1_names = ", ".join(item.scored_use_case.use_case.process_name for item in wave1) or "aucun"
 
-    if wave1:
-        riskiest = max(wave1, key=lambda item: item.scored_use_case.scores.risk)
+    if roadmap_planned:
+        riskiest = max(roadmap_planned, key=lambda item: item.scored_use_case.scores.risk)
+        riskiest_ai_act = riskiest.scored_use_case.use_case.ai_act
         main_risk_line = (
             f"Risque principal : {riskiest.scored_use_case.use_case.process_name} "
-            f"(niveau AI Act : {AI_ACT_LABELS[riskiest.scored_use_case.use_case.ai_act.value]})."
+            f"(niveau AI Act : {AI_ACT_LABELS[riskiest_ai_act.value]}, vague {riskiest.wave}) — "
+            f"{RISK_MITIGATIONS[riskiest_ai_act]}."
         )
     else:
-        main_risk_line = "Risque principal : aucun cas planifié en vague 1."
+        main_risk_line = "Risque principal : aucun cas planifié."
 
     lines = [
         f"{len(processes)} processus et {total_use_cases} cas d'usage ont été analysés{exclusion_note}.",
         f"Cas d'usage retenus pour la vague 1 (0-3 mois) : {wave1_names}.",
-        f"Gain annuel total de la vague 1 (scénario de base) : {wave1_gain:,.0f} € — "
-        f"investissement initial total : {wave1_cost:,.0f} €.",
+        f"Gain annuel de la vague 1 : entre {fmt_eur(wave1_gain_pessimistic)} (adoption pessimiste) et "
+        f"{fmt_eur(wave1_gain_optimistic)} (optimiste), {fmt_eur(wave1_gain_base)} en scénario central — "
+        "valeur du temps libéré, pas une économie de trésorerie.",
         main_risk_line,
-        f"Décision attendue : valider le lancement de la vague 1 (investissement initial de {wave1_cost:,.0f} €).",
+        f"Décision attendue : valider le lancement de la vague 1 "
+        f"(investissement initial de {fmt_eur(wave1_cost)}).",
     ]
     for line in lines:
         story.append(Paragraph(line, styles["body"]))
@@ -244,8 +301,12 @@ def _synthesis_page(
         ["Processus analysés", str(len(processes))],
         ["Cas d'usage analysés", str(total_use_cases)],
         ["Cas d'usage en vague 1", str(len(wave1))],
-        ["Gain annuel vague 1 (base)", f"{wave1_gain:,.0f} €"],
-        ["Investissement initial vague 1", f"{wave1_cost:,.0f} €"],
+        ["Gain annuel vague 1 (central)", fmt_eur(wave1_gain_base)],
+        [
+            "Gain annuel vague 1 (pessimiste - optimiste)",
+            _cell(f"{fmt_eur(wave1_gain_pessimistic)} - {fmt_eur(wave1_gain_optimistic)}", styles),
+        ],
+        ["Investissement initial vague 1", fmt_eur(wave1_cost)],
     ]
     table = Table(key_figures, colWidths=[90 * mm, 70 * mm])
     table.setStyle(_table_style())
@@ -253,11 +314,12 @@ def _synthesis_page(
     story.append(PageBreak())
 
 
-def _wave1_business_case(item: RoadmapItem, processes: list[Process], hourly_cost: float, assumptions: Assumptions):
-    """Return the base-scenario BusinessCase for one planned roadmap item."""
+def _wave1_business_cases(
+    item: RoadmapItem, processes: list[Process], hourly_cost: float, assumptions: Assumptions
+) -> dict:
+    """Return the 3-scenario BusinessCase dict for one planned roadmap item."""
     process = _find_process(item.scored_use_case.use_case.process_name, processes)
-    cases = compute_business_cases(item.scored_use_case.use_case, process, hourly_cost, assumptions)
-    return cases["base"]
+    return compute_business_cases(item.scored_use_case.use_case, process, hourly_cost, assumptions)
 
 
 def _find_process(process_name: str, processes: list[Process]) -> Process:
@@ -269,8 +331,12 @@ def _find_process(process_name: str, processes: list[Process]) -> Process:
 
 
 def _matrix_page(story: list, styles: dict[str, ParagraphStyle], scored_use_cases: list[ScoredUseCase]) -> None:
-    """Page 3: the value x feasibility matrix, reused from viz/matrix_chart.py."""
-    story.append(Paragraph("Matrice valeur x faisabilité", styles["heading"]))
+    """Page 3: the value x feasibility matrix, reused from viz/matrix_chart.py.
+
+    No separate page heading here: the chart itself already carries the
+    title "Matrice valeur × faisabilité" (viz/matrix_chart.py), so adding
+    another one above it would duplicate it.
+    """
     fig = build_matrix_figure(scored_use_cases)
     story.append(_figure_image(fig, display_width_mm=CONTENT_WIDTH_MM, max_height_mm=220, width=1000, scale=2))
     story.append(Spacer(1, 3 * mm))
@@ -378,10 +444,10 @@ def _wave1_use_case_page(
     scores_rows = [
         ["Valeur", "Faisabilité", "Risque", "Priorité"],
         [
-            f"{scored.scores.value:.1f}",
-            f"{scored.scores.feasibility:.1f}",
-            f"{scored.scores.risk:.1f}",
-            f"{scored.scores.priority:.1f}",
+            _fmt_score(scored.scores.value),
+            _fmt_score(scored.scores.feasibility),
+            _fmt_score(scored.scores.risk),
+            _fmt_score(scored.scores.priority),
         ],
     ]
     scores_table = Table(scores_rows, colWidths=[42.5 * mm] * 4)
@@ -401,8 +467,10 @@ def _wave1_use_case_page(
     }
     criteria_rows = [["Critère", "Valeur", "Rationale"]]
     for key, value in criteria_values.items():
-        criteria_rows.append([key, value, _cell(use_case.criteria_rationale.get(key, "—"), styles)])
-    criteria_table = Table(criteria_rows, colWidths=[40 * mm, 20 * mm, 110 * mm], repeatRows=1)
+        criteria_rows.append(
+            [CRITERION_LABELS[key], value, _cell(use_case.criteria_rationale.get(key, "—"), styles)]
+        )
+    criteria_table = Table(criteria_rows, colWidths=[55 * mm, 20 * mm, 95 * mm], repeatRows=1)
     criteria_table.setStyle(_table_style())
     story.append(criteria_table)
 
@@ -410,15 +478,12 @@ def _wave1_use_case_page(
     cases = compute_business_cases(use_case, process, hourly_cost, assumptions)
     rows = [["", "Pessimiste", "Base", "Optimiste"]]
     row_labels = [
-        ("Gain annuel (€)", lambda c: f"{c.annual_gain_eur:,.0f}"),
-        ("Coût initial (€)", lambda c: f"{c.one_off_cost_eur:,.0f}"),
-        ("Coût annuel (€)", lambda c: f"{c.annual_run_cost_eur:,.0f}"),
-        ("TCO (€)", lambda c: f"{c.tco_eur:,.0f}"),
-        ("ROI", lambda c: f"{c.roi:.1%}"),
-        (
-            "Retour sur investissement",
-            lambda c: f"{c.payback_months:.1f} mois" if c.payback_months is not None else "jamais remboursé",
-        ),
+        ("Gain annuel", lambda c: fmt_eur(c.annual_gain_eur)),
+        ("Coût initial", lambda c: fmt_eur(c.one_off_cost_eur)),
+        ("Coût annuel", lambda c: fmt_eur(c.annual_run_cost_eur)),
+        ("TCO", lambda c: fmt_eur(c.tco_eur)),
+        ("ROI", lambda c: fmt_pct(c.roi)),
+        ("Retour sur investissement", lambda c: fmt_months(c.payback_months)),
     ]
     for label, formatter in row_labels:
         rows.append([label, formatter(cases["pessimistic"]), formatter(cases["base"]), formatter(cases["optimistic"])])
@@ -436,6 +501,41 @@ def _wave1_use_case_page(
     story.append(PageBreak())
 
 
+def _format_assumption_value(field_type: str, value: float) -> str:
+    """Format one Assumptions field value according to its display type."""
+    if field_type == "eur":
+        return fmt_eur(value)
+    if field_type == "eur_precise":
+        text = f"{value:.4f}".replace(".", ",")
+        return f"{text}{NBSP}€"
+    if field_type == "pct":
+        return fmt_pct(value)
+    if field_type == "days":
+        return f"{value:.1f}".replace(".", ",") + " jours"
+    if field_type == "years":
+        return f"{int(value)} ans"
+    raise ValueError(f"Unknown assumption field type: {field_type}")
+
+
+def _scale_table(values: dict[int, float], row_label: str, styles: dict[str, ParagraphStyle]) -> Table:
+    """Build a small 1-5 scale table (e.g. build days by complexity level)."""
+    levels = sorted(values)
+    header = ["Niveau"] + [str(level) for level in levels]
+    row = [_cell(row_label, styles)] + [f"{values[level]:.0f} j" for level in levels]
+    table = Table([header, row], colWidths=[42 * mm] + [25.6 * mm] * len(levels))
+    table.setStyle(_table_style())
+    return table
+
+
+def _adoption_rates_table(rates: dict[str, float]) -> Table:
+    """Build the small 3-scenario adoption-rate table."""
+    header = ["Pessimiste", "Base", "Optimiste"]
+    row = [fmt_pct(rates["pessimistic"]), fmt_pct(rates["base"]), fmt_pct(rates["optimistic"])]
+    table = Table([header, row], colWidths=[56.6 * mm] * 3)
+    table.setStyle(_table_style())
+    return table
+
+
 def _annexe_page(
     story: list,
     styles: dict[str, ParagraphStyle],
@@ -447,18 +547,32 @@ def _annexe_page(
 
     story.append(Paragraph("Hypothèses du business case", styles["subheading"]))
     assumption_rows = [["Hypothèse", "Valeur"]]
-    for key, value in assumptions.model_dump().items():
-        assumption_rows.append([key, _cell(str(value), styles)])
-    assumptions_table = Table(assumption_rows, colWidths=[90 * mm, 80 * mm], repeatRows=1)
+    for key, label, field_type in ASSUMPTION_FIELDS:
+        assumption_rows.append([label, _format_assumption_value(field_type, getattr(assumptions, key))])
+    assumptions_table = Table(assumption_rows, colWidths=[110 * mm, 60 * mm], repeatRows=1)
     assumptions_table.setStyle(_table_style())
     story.append(assumptions_table)
+
+    story.append(Spacer(1, 4 * mm))
+    story.append(Paragraph("Jours de build par complexité technique (1 à 5)", styles["body"]))
+    story.append(_scale_table(assumptions.build_days_by_complexity, "Jours de build", styles))
+
+    story.append(Spacer(1, 4 * mm))
+    story.append(Paragraph("Jours de conduite du changement par risque d'adoption (1 à 5)", styles["body"]))
+    story.append(
+        _scale_table(assumptions.change_management_days_by_adoption_risk, "Jours de changement", styles)
+    )
+
+    story.append(Spacer(1, 4 * mm))
+    story.append(Paragraph("Taux d'adoption par scénario", styles["body"]))
+    story.append(_adoption_rates_table(assumptions.adoption_rates))
 
     story.append(Paragraph("Pondérations utilisées", styles["subheading"]))
     weight_rows = [["Axe", "Sous-pondération", "Valeur"]]
     for axis, sub_weights in weights.items():
         for sub_key, sub_value in sub_weights.items():
-            weight_rows.append([axis, sub_key, f"{sub_value:.2f}"])
-    weights_table = Table(weight_rows, colWidths=[40 * mm, 60 * mm, 70 * mm], repeatRows=1)
+            weight_rows.append([AXIS_LABELS[axis], SUB_WEIGHT_LABELS[axis][sub_key], fmt_pct(sub_value)])
+    weights_table = Table(weight_rows, colWidths=[40 * mm, 85 * mm, 45 * mm], repeatRows=1)
     weights_table.setStyle(_table_style())
     story.append(weights_table)
 

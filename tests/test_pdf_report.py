@@ -75,3 +75,13 @@ def test_report_text_contains_expected_content(demo_report_path: Path):
     assert "NordIndus Distribution" in full_text
     assert "Supplier invoice processing" in full_text
     assert "Order status inquiries" in full_text
+
+
+def test_synthesis_main_risk_is_highest_risk_across_all_waves(demo_report_path: Path):
+    """The main risk is the highest-risk planned case across ALL waves, not just wave 1:
+    for the demo, that is the wave-2 CV screening case (high AI Act risk), not a wave-1 one."""
+    reader = pypdf.PdfReader(str(demo_report_path))
+    full_text = "\n".join(page.extract_text() for page in reader.pages)
+
+    assert "Risque principal : CV screening for open positions" in full_text
+    assert "Élevé, vague 2" in full_text
