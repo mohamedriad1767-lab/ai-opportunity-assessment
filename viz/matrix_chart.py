@@ -26,12 +26,20 @@ QUADRANT_CORNERS = {
 }
 
 MAX_MARKER_SIZE = 50
+QUICK_WIN_SHADING_COLOR = "rgba(0, 114, 178, 0.08)"
 
 
 def _size_ref(scored_use_cases: list[ScoredUseCase]) -> float:
     """Plotly's recommended sizeref so the largest bubble fits MAX_MARKER_SIZE."""
     max_gain = max((item.annual_gain_eur for item in scored_use_cases), default=1)
     return 2.0 * max(max_gain, 1) / (MAX_MARKER_SIZE**2)
+
+
+def _rank_to_name_caption(scored_use_cases: list[ScoredUseCase]) -> str:
+    """Build the 'rank -> use case short name' legend shown below the chart."""
+    ordered = sorted(scored_use_cases, key=lambda item: item.rank)
+    lines = [f"{item.rank}. {item.use_case.process_name}" for item in ordered]
+    return "<b>Légende des rangs</b><br>" + "<br>".join(lines)
 
 
 def build_matrix_figure(
@@ -43,26 +51,31 @@ def build_matrix_figure(
 
     x = feasibility (0-100), y = value (0-100), bubble size = annual gain
     (EUR), color = EU AI Act risk level. Dashed lines mark the thresholds,
-    and the 4 quadrant names are annotated in the corners.
+    the 4 quadrant names are annotated in the corners (Quick wins lightly
+    shaded), each bubble is labeled with its rank number, and a rank -> use
+    case name caption is added below the chart for static/PDF export.
     """
     fig = go.Figure()
     size_ref = _size_ref(scored_use_cases)
 
     for ai_act_level, color in AI_ACT_COLORS.items():
         items = [item for item in scored_use_cases if item.use_case.ai_act.value == ai_act_level]
-        if not items:
-            continue
         fig.add_trace(
             go.Scatter(
                 x=[item.scores.feasibility for item in items],
                 y=[item.scores.value for item in items],
-                mode="markers",
+                mode="markers+text",
                 name=AI_ACT_LABELS_FR[ai_act_level],
+                legendgroup=ai_act_level,
+                showlegend=True,
+                text=[str(item.rank) for item in items],
+                textposition="middle center",
+                textfont=dict(size=11, color="white"),
                 marker=dict(
                     size=[max(item.annual_gain_eur, 1) for item in items],
                     sizemode="area",
                     sizeref=size_ref,
-                    sizemin=8,
+                    sizemin=18,
                     color=color,
                     line=dict(width=1, color="white"),
                 ),
@@ -86,6 +99,16 @@ def build_matrix_figure(
             )
         )
 
+    fig.add_shape(
+        type="rect",
+        x0=feasibility_threshold,
+        x1=100,
+        y0=value_threshold,
+        y1=100,
+        fillcolor=QUICK_WIN_SHADING_COLOR,
+        line=dict(width=0),
+        layer="below",
+    )
     fig.add_shape(
         type="line",
         x0=feasibility_threshold,
@@ -111,16 +134,37 @@ def build_matrix_figure(
             y=corner["y"],
             xanchor=corner["xanchor"],
             yanchor=corner["yanchor"],
-            text=quadrant.value,
+            text=f"<b>{quadrant.value}</b>",
             showarrow=False,
-            font=dict(size=13, color="gray"),
-            opacity=0.8,
+            font=dict(size=16, color="#333333"),
+            opacity=0.9,
         )
 
+    fig.add_annotation(
+        xref="paper",
+        yref="paper",
+        x=0,
+        y=-0.3,
+        xanchor="left",
+        yanchor="top",
+        align="left",
+        text=_rank_to_name_caption(scored_use_cases),
+        showarrow=False,
+        font=dict(size=11, color="#333333"),
+    )
+
     fig.update_layout(
-        title="Matrice valeur x faisabilité",
-        xaxis=dict(title="Faisabilité", range=[0, 100]),
-        yaxis=dict(title="Valeur", range=[0, 100]),
+        template="simple_white",
+        title=dict(
+            text=(
+                "Matrice valeur × faisabilité"
+                "<br><sup>Taille des bulles = gain annuel (€) · couleur = niveau AI Act</sup>"
+            )
+        ),
+        xaxis=dict(title="Faisabilité", range=[0, 100], showgrid=True, gridcolor="#eeeeee"),
+        yaxis=dict(title="Valeur", range=[0, 100], showgrid=True, gridcolor="#eeeeee"),
         legend_title_text="Niveau AI Act",
+        margin=dict(b=300, t=100),
+        height=900,
     )
     return fig

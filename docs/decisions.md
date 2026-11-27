@@ -49,3 +49,8 @@ Given the no-fit mechanism's entire purpose is to catch exactly the kind of proc
 ## Gains are freed time, not cash
 
 Gains are valued as freed time, not cash savings: they become cash only if capacity is reduced or redeployed. Stated in the report and README limitations.
+
+## "Order status inquiries" AI Act level corrected: minimal -> limited
+
+The phase-0 demo data originally classified the order-status chatbot as "minimal" risk. It is a customer-facing conversational assistant, which falls under the EU AI Act Art. 50 transparency obligation (users must be informed they are interacting with an AI system) — so it is "limited", not "minimal". This is a data correction, not a scoring rule change: `data/phase0_use_cases.json` was edited directly, and `docs/manual_scoring.xlsx` was left untouched since it predates this fix and is kept only as a historical reference snapshot.
+The fix changes the phase-0 ranking: "Supplier invoice processing" becomes #1 and "Order status inquiries" becomes #2 (previously reversed). The expected order in `tests/test_scoring.py` and `tests/test_app.py` was updated to match.

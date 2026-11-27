@@ -158,12 +158,12 @@ def test_prohibited_case_is_excluded_and_other_scores_are_unaffected(processes, 
 
 
 def test_phase0_ranking_is_reproduced(processes, use_cases):
-    """The phase-0 use cases rank: order status, supplier invoices, quote generation, monthly reporting, CV screening."""
+    """The phase-0 use cases rank: supplier invoices, order status, quote generation, monthly reporting, CV screening."""
     scored, _ = score_use_cases(use_cases, processes, HOURLY_COST_EUR)
     ranking = [item.use_case.process_name for item in scored]
     assert ranking == [
-        "Order status inquiries",
         "Supplier invoice processing",
+        "Order status inquiries",
         "Quote generation",
         "Monthly management reporting consolidation",
         "CV screening for open positions",

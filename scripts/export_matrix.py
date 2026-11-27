@@ -31,7 +31,7 @@ def main() -> None:
     fig = build_matrix_figure(scored)
 
     os.makedirs(os.path.dirname(OUTPUT_PATH), exist_ok=True)
-    fig.write_image(OUTPUT_PATH, width=1000, height=700, scale=2)
+    fig.write_image(OUTPUT_PATH, width=1000, scale=2)
 
     print(f"Wrote {OUTPUT_PATH}")
 

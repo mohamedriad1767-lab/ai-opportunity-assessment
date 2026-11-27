@@ -26,7 +26,7 @@
     "technical_complexity": 2,
     "adoption_risk": 3,
     "off_the_shelf": true,
-    "ai_act": "minimal",
+    "ai_act": "limited",
     "gdpr": "indirect"
   },
   {

@@ -11,8 +11,8 @@ LOAD_DEMO_COMPANY_LABEL = "Charger l'entreprise de démo"
 LOAD_DEMO_USE_CASES_LABEL = "Charger les cas de démo"
 
 PHASE0_RANKING_ORDER = [
-    "Order status inquiries",
     "Supplier invoice processing",
+    "Order status inquiries",
     "Quote generation",
     "Monthly management reporting consolidation",
     "CV screening for open positions",
