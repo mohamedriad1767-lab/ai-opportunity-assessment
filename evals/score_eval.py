@@ -6,6 +6,7 @@ judge has run, and the human-vs-judge agreement on rows graded by both.
 import csv
 import json
 import os
+import statistics
 import sys
 
 # Allow running this script directly (python evals/score_eval.py) by making
@@ -18,6 +19,15 @@ from core.prompts import PROMPT_VERSION
 RESULTS_PATH = f"evals/results/{PROMPT_VERSION}_{MODEL_NAME}.jsonl"
 GRADING_PATH = f"evals/grading_{PROMPT_VERSION}.csv"
 JUDGE_PATH = f"evals/grading_{PROMPT_VERSION}_judge.csv"
+
+# The 1-5 criteria the model self-rates on every proposed use case.
+CRITERIA_KEYS = [
+    "quality_impact",
+    "strategic_alignment",
+    "data_quality",
+    "technical_complexity",
+    "adoption_risk",
+]
 
 
 def load_results(path: str) -> list[dict]:
@@ -61,6 +71,21 @@ def compute_automatic_metrics(results: list[dict]) -> dict:
         ),
         "total_cost_usd": total_cost_usd,
     }
+
+
+def compute_criteria_spread(results: list[dict]) -> dict[str, float | None]:
+    """Standard deviation of each 1-5 criterion across every generated use case.
+
+    A low spread (especially near 0) signals central-tendency / optimism
+    bias: the model clustering its own ratings around one value instead of
+    discriminating between processes (see docs/decisions.md).
+    """
+    all_use_cases = [uc for r in results for uc in r["use_cases"]]
+    spread: dict[str, float | None] = {}
+    for key in CRITERIA_KEYS:
+        values = [uc[key] for uc in all_use_cases]
+        spread[key] = statistics.pstdev(values) if values else None
+    return spread
 
 
 def compute_grading_metrics(grading_rows: list[dict]) -> dict | None:
@@ -148,6 +173,10 @@ def main() -> None:
     print(f"First-attempt valid rate: {automatic['first_attempt_valid_rate']:.2%}")
     print(f"Avg use cases per process: {automatic['avg_use_cases_per_process']:.2f}")
     print(f"Total cost: ${automatic['total_cost_usd']:.6f}")
+
+    print("\n=== Criteria spread (stdev of each 1-5 criterion across all generated cases) ===")
+    for key, value in compute_criteria_spread(results).items():
+        print(f"{key}: {'n/a' if value is None else f'{value:.2f}'}")
 
     judge = compute_judge_metrics(judge_rows)
     if judge is not None:

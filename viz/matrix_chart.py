@@ -17,6 +17,20 @@ AI_ACT_COLORS = {
     "high": "#D55E00",  # vermillion — warm alert color (Okabe-Ito, colorblind-safe)
 }
 AI_ACT_LABELS_FR = {"minimal": "Minimal", "limited": "Limité", "high": "Élevé"}
+TYPE_LABELS_FR = {
+    "assistant": "Assistant",
+    "document_extraction": "Extraction de documents",
+    "classification": "Classification",
+    "agent": "Agent",
+    "generation": "Génération",
+}
+
+# Rank-number text labels are nudged off-center when two bubbles are closer
+# than this (in 0-100 score units) so neither number is obscured by the
+# other bubble. Positions cycle through this palette as more overlapping
+# bubbles are encountered at roughly the same spot.
+OVERLAP_DISTANCE = 6.0
+TEXT_POSITIONS = ["middle center", "top center", "bottom center", "middle right", "middle left"]
 
 QUADRANT_CORNERS = {
     Quadrant.QUICK_WIN: {"x": 1, "y": 1, "xanchor": "right", "yanchor": "top"},
@@ -49,10 +63,35 @@ def _size_ref(scored_use_cases: list[ScoredUseCase]) -> float:
 
 
 def _rank_to_name_caption(scored_use_cases: list[ScoredUseCase]) -> str:
-    """Build the 'rank -> use case short name' legend shown below the chart."""
+    """Build the 'rank -> process — type' legend shown below the chart.
+
+    The type (in French) is included, not just the process name, so two use
+    cases proposed for the same process (e.g. when "Afficher tous les cas
+    d'usage" is on) stay distinguishable in the legend.
+    """
     ordered = sorted(scored_use_cases, key=lambda item: item.rank)
-    lines = [f"{item.rank}. {item.use_case.process_name}" for item in ordered]
+    lines = [
+        f"{item.rank}. {item.use_case.process_name} — {TYPE_LABELS_FR[item.use_case.type.value]}"
+        for item in ordered
+    ]
     return "<b>Légende des rangs</b><br>" + "<br>".join(lines)
+
+
+def _text_positions(scored_use_cases: list[ScoredUseCase]) -> dict[int, str]:
+    """Assign a text position per use case (keyed by rank), nudging the rank
+    number off-center whenever its bubble sits within OVERLAP_DISTANCE of an
+    already-placed one, so overlapping bubbles don't hide each other's label.
+    """
+    positions: dict[int, str] = {}
+    placed: list[tuple[float, float]] = []
+    for item in sorted(scored_use_cases, key=lambda item: item.rank):
+        x, y = item.scores.feasibility, item.scores.value
+        overlap_count = sum(
+            1 for px, py in placed if ((px - x) ** 2 + (py - y) ** 2) ** 0.5 < OVERLAP_DISTANCE
+        )
+        positions[item.rank] = TEXT_POSITIONS[overlap_count % len(TEXT_POSITIONS)]
+        placed.append((x, y))
+    return positions
 
 
 def _layout_dimensions(num_items: int) -> tuple[float, float, float]:
@@ -84,6 +123,7 @@ def build_matrix_figure(
     """
     fig = go.Figure()
     size_ref = _size_ref(scored_use_cases)
+    text_positions = _text_positions(scored_use_cases)
 
     for ai_act_level, color in AI_ACT_COLORS.items():
         items = [item for item in scored_use_cases if item.use_case.ai_act.value == ai_act_level]
@@ -96,8 +136,15 @@ def build_matrix_figure(
                 legendgroup=ai_act_level,
                 showlegend=True,
                 text=[str(item.rank) for item in items],
-                textposition="middle center",
-                textfont=dict(size=11, color="white"),
+                textposition=[text_positions[item.rank] for item in items],
+                # White text reads fine on the bubble itself ("middle center"),
+                # but a nudged-off-center label sits on the white background
+                # instead, where white would be invisible — use the bubble's
+                # own color there so it stays legible either way.
+                textfont=dict(
+                    size=11,
+                    color=["white" if text_positions[item.rank] == "middle center" else color for item in items],
+                ),
                 marker=dict(
                     size=[max(item.annual_gain_eur, 1) for item in items],
                     sizemode="area",

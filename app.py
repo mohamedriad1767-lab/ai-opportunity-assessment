@@ -17,10 +17,17 @@ from core.assumptions import Assumptions
 from core.business_case import compute_business_cases
 from core.generator import GenerationError, generate_use_cases, make_client
 from core.loader import load_company, load_demo_cache, load_processes, load_use_cases, validate_records
-from core.matrix import classify_quadrant
+from core.matrix import ThresholdMode, classify_quadrant, portfolio_thresholds
 from core.models import AIActLevel, Company, GDPRLevel, Process, UseCase, UseCaseType
 from core.roadmap import WAVE_LABELS, build_roadmap
-from core.scoring import DEFAULT_WEIGHTS, normalize_weights, score_use_cases, split_prohibited, validate_weights
+from core.scoring import (
+    DEFAULT_WEIGHTS,
+    best_per_process,
+    normalize_weights,
+    score_use_cases,
+    split_prohibited,
+    validate_weights,
+)
 from export.formatting import fmt_eur, fmt_months, fmt_pct
 from export.pdf_report import build_report
 from viz.matrix_chart import build_matrix_figure
@@ -435,11 +442,40 @@ def render_ponderation_tab() -> None:
         return
 
     st.subheader("Matrice valeur x faisabilité")
+    threshold_mode_label = st.radio(
+        "Seuils des quadrants",
+        ["Relatifs (médiane du portefeuille)", "Absolus (50)"],
+        index=0,
+        key="threshold_mode",
+        horizontal=True,
+    )
+    threshold_mode = (
+        ThresholdMode.RELATIVE if threshold_mode_label.startswith("Relatifs") else ThresholdMode.ABSOLUTE
+    )
+
     threshold_columns = st.columns(2)
     with threshold_columns[0]:
-        value_threshold = st.slider("Seuil de valeur", 0, 100, 50, key="matrix_value_threshold")
+        absolute_value_threshold = st.slider(
+            "Seuil de valeur (mode absolu)",
+            0,
+            100,
+            50,
+            key="matrix_value_threshold",
+            disabled=threshold_mode != ThresholdMode.ABSOLUTE,
+        )
     with threshold_columns[1]:
-        feasibility_threshold = st.slider("Seuil de faisabilité", 0, 100, 50, key="matrix_feasibility_threshold")
+        absolute_feasibility_threshold = st.slider(
+            "Seuil de faisabilité (mode absolu)",
+            0,
+            100,
+            50,
+            key="matrix_feasibility_threshold",
+            disabled=threshold_mode != ThresholdMode.ABSOLUTE,
+        )
+
+    value_threshold, feasibility_threshold = portfolio_thresholds(
+        scored, threshold_mode, absolute_value_threshold, absolute_feasibility_threshold
+    )
 
     st.subheader("Classement")
     ranking_rows = [
@@ -460,8 +496,11 @@ def render_ponderation_tab() -> None:
     ]
     st.dataframe(pd.DataFrame(ranking_rows), width="stretch")
 
-    matrix_figure = build_matrix_figure(scored, value_threshold, feasibility_threshold)
+    show_all_use_cases = st.checkbox("Afficher tous les cas d'usage", value=False)
+    matrix_use_cases = scored if show_all_use_cases else best_per_process(scored)
+    matrix_figure = build_matrix_figure(matrix_use_cases, value_threshold, feasibility_threshold)
     st.plotly_chart(matrix_figure, width="stretch")
+    st.caption(f"Seuils effectifs : valeur = {value_threshold:.1f} · faisabilité = {feasibility_threshold:.1f}")
 
     st.subheader("Feuille de route en 3 vagues")
     max_per_wave = st.number_input("Nombre maximum de cas par vague", min_value=1, value=3, step=1)

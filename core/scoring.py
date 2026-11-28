@@ -284,3 +284,22 @@ def score_use_cases(
         for rank, (uc, gain, scores) in enumerate(unranked, start=1)
     ]
     return scored, excluded
+
+
+def best_per_process(scored_use_cases: list[ScoredUseCase]) -> list[ScoredUseCase]:
+    """Keep only the highest-priority use case for each process_name.
+
+    Used to declutter the value x feasibility matrix when several use cases
+    were proposed for the same process: showing every one of them makes
+    same-process bubbles overlap and the matrix hard to read. Ties keep the
+    first-encountered item (scored_use_cases is expected to already be
+    sorted by priority descending, as score_use_cases returns it). Order of
+    the input list is preserved for the items that are kept.
+    """
+    best_by_process: dict[str, ScoredUseCase] = {}
+    for item in scored_use_cases:
+        current_best = best_by_process.get(item.use_case.process_name)
+        if current_best is None or item.scores.priority > current_best.scores.priority:
+            best_by_process[item.use_case.process_name] = item
+    kept_ranks = {item.rank for item in best_by_process.values()}
+    return [item for item in scored_use_cases if item.rank in kept_ranks]

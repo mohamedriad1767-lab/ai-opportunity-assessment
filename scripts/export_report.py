@@ -9,6 +9,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from core.assumptions import Assumptions
 from core.loader import load_company, load_demo_cache, load_processes
+from core.matrix import ThresholdMode, portfolio_thresholds
 from core.roadmap import build_roadmap
 from core.scoring import DEFAULT_WEIGHTS, score_use_cases, split_prohibited
 from export.pdf_report import build_report
@@ -27,7 +28,8 @@ def main() -> None:
     processes_by_name = {p.name: p for p in processes}
     _, excluded = split_prohibited(use_cases)
     scored, _ = score_use_cases(use_cases, processes_by_name, HOURLY_COST_EUR)
-    planned, archived = build_roadmap(scored)
+    value_threshold, feasibility_threshold = portfolio_thresholds(scored, ThresholdMode.RELATIVE)
+    planned, archived = build_roadmap(scored, value_threshold, feasibility_threshold)
 
     build_report(
         company=company,

@@ -3,7 +3,10 @@
 Pure classification only — no I/O, no printing.
 """
 
+import statistics
 from enum import Enum
+
+from core.models import ScoredUseCase
 
 
 class Quadrant(str, Enum):
@@ -13,6 +16,40 @@ class Quadrant(str, Enum):
     STRUCTURAL = "Projets structurants"
     OPTIMIZATION = "Optimisations"
     DISCARD = "À écarter"
+
+
+class ThresholdMode(str, Enum):
+    """How the quadrant thresholds are set.
+
+    ABSOLUTE: fixed bar (e.g. 50/50), independent of the portfolio.
+    RELATIVE: the portfolio's own median value/feasibility, so quadrants
+    split the actual portfolio in half rather than against a fixed bar.
+    """
+
+    ABSOLUTE = "absolute"
+    RELATIVE = "relative"
+
+
+def portfolio_thresholds(
+    scored_use_cases: list[ScoredUseCase],
+    mode: ThresholdMode,
+    absolute_value: float = 50,
+    absolute_feasibility: float = 50,
+) -> tuple[float, float]:
+    """Return (value_threshold, feasibility_threshold) for the quadrant matrix.
+
+    In ABSOLUTE mode, always returns (absolute_value, absolute_feasibility).
+    In RELATIVE mode, returns the portfolio's median value and median
+    feasibility: useful when LLM-prefilled criteria cluster scores together
+    (see docs/decisions.md), which otherwise pushes most of the portfolio
+    into a single quadrant under a fixed 50/50 bar. Falls back to absolute
+    mode for an empty portfolio, since a median is undefined with no data.
+    """
+    if mode == ThresholdMode.ABSOLUTE or not scored_use_cases:
+        return absolute_value, absolute_feasibility
+    values = [item.scores.value for item in scored_use_cases]
+    feasibilities = [item.scores.feasibility for item in scored_use_cases]
+    return statistics.median(values), statistics.median(feasibilities)
 
 
 def classify_quadrant(

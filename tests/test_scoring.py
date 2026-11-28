@@ -11,6 +11,7 @@ from core.scoring import (
     DEFAULT_WEIGHTS,
     annual_hours,
     annual_time_value,
+    best_per_process,
     feasibility_score,
     note_to_100,
     normalize_log_minmax,
@@ -190,3 +191,25 @@ def test_unknown_process_name_raises_value_error_mentioning_the_process(processe
     bad_use_case = use_cases[0].model_copy(update={"process_name": "Nonexistent process"})
     with pytest.raises(ValueError, match="Nonexistent process"):
         score_use_cases([bad_use_case], processes, HOURLY_COST_EUR)
+
+
+def test_best_per_process_keeps_only_the_highest_priority_case_per_process(processes):
+    """Among several use cases proposed for the same process, only the highest-priority one is kept."""
+    candidates = [
+        make_use_case(process_name="Order entry", pct_time_saved=0.2, quality_impact=2),
+        make_use_case(process_name="Order entry", pct_time_saved=0.7, quality_impact=5),
+        make_use_case(process_name="Quote generation", pct_time_saved=0.4, quality_impact=3),
+    ]
+    scored, _ = score_use_cases(candidates, processes, HOURLY_COST_EUR)
+
+    best = best_per_process(scored)
+
+    assert {item.use_case.process_name for item in best} == {"Order entry", "Quote generation"}
+    order_entry_best = next(item for item in best if item.use_case.process_name == "Order entry")
+    assert order_entry_best.use_case.pct_time_saved == 0.7
+
+
+def test_best_per_process_with_no_duplicate_processes_returns_everything(processes, use_cases):
+    """With one use case per process (the phase-0 demo), nothing is dropped."""
+    scored, _ = score_use_cases(use_cases, processes, HOURLY_COST_EUR)
+    assert best_per_process(scored) == scored

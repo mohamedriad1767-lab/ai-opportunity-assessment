@@ -9,7 +9,18 @@ import sys
 # project root importable regardless of the current working directory.
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import statistics
+
 from core.config import MODEL_NAME, PRICE_INPUT_PER_MTOK_USD, PRICE_OUTPUT_PER_MTOK_USD
+
+# The 1-5 criteria the model self-rates on every proposed use case.
+CRITERIA_KEYS = [
+    "quality_impact",
+    "strategic_alignment",
+    "data_quality",
+    "technical_complexity",
+    "adoption_risk",
+]
 
 # One variable changes between consecutive runs:
 # v3 -> v4.1 : prompt changes (no-fit option, AI Act guidance, overlap rule)
@@ -100,7 +111,7 @@ def compute_metrics(version: str, model: str, expected_fit: dict[str, str]) -> d
     overlaps = [r["judge_overlaps_another"].strip().lower() == "true" for r in judge_rows]
     ai_act_correct = [r["judge_ai_act_correct"].strip().lower() == "true" for r in judge_rows]
 
-    return {
+    metrics = {
         "valid_rate": len(successful) / total_processes if total_processes else 0.0,
         "avg_use_cases_per_process": total_use_cases / total_processes if total_processes else 0.0,
         "no_fit_count": no_fit_count,
@@ -112,6 +123,11 @@ def compute_metrics(version: str, model: str, expected_fit: dict[str, str]) -> d
         "distinct_pct_time_saved_values": len(distinct_pct_values),
         "cost_usd": cost_usd,
     }
+    all_use_cases = [uc for r in results for uc in r["use_cases"]]
+    for key in CRITERIA_KEYS:
+        values = [uc[key] for uc in all_use_cases]
+        metrics[f"criteria_spread_{key}"] = statistics.pstdev(values) if values else None
+    return metrics
 
 
 def format_cell(value) -> str:
@@ -135,7 +151,17 @@ ROWS = [
     ("ai_act_error_rate", "AI Act error rate (judge)"),
     ("distinct_pct_time_saved_values", "Distinct pct_time_saved values"),
     ("cost_usd", "Cost (USD)"),
+    ("criteria_spread_quality_impact", "Criteria spread: quality_impact"),
+    ("criteria_spread_strategic_alignment", "Criteria spread: strategic_alignment"),
+    ("criteria_spread_data_quality", "Criteria spread: data_quality"),
+    ("criteria_spread_technical_complexity", "Criteria spread: technical_complexity"),
+    ("criteria_spread_adoption_risk", "Criteria spread: adoption_risk"),
 ]
+
+# Metrics that are always a raw number (stdev, USD), never a 0-1 rate, so
+# format_cell's "float in [0,1] looks like a percentage" heuristic must not
+# apply to them.
+NON_PERCENT_FLOAT_KEYS = {f"criteria_spread_{key}" for key in CRITERIA_KEYS} | {"cost_usd"}
 
 
 def _get_no_fit_reason(record: dict) -> str | None:
@@ -190,6 +216,8 @@ def main() -> None:
             value = metrics[(version, model)][key]
             if key == "cost_usd":
                 cell = f"${value:.6f}"
+            elif key in NON_PERCENT_FLOAT_KEYS:
+                cell = "n/a" if value is None else f"{value:.2f}"
             else:
                 cell = format_cell(value)
             row += f"{cell:>14}"

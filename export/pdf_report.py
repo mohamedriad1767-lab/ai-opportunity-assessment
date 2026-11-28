@@ -32,8 +32,10 @@ from reportlab.platypus import (
 import reportlab as _reportlab
 from core.assumptions import Assumptions
 from core.business_case import compute_business_cases
+from core.matrix import ThresholdMode, portfolio_thresholds
 from core.models import AIActLevel, Company, Process, ScoredUseCase, UseCase
 from core.roadmap import WAVE_LABELS, RoadmapItem
+from core.scoring import best_per_process
 from export.formatting import NBSP, fmt_eur, fmt_months, fmt_pct
 from viz.matrix_chart import build_matrix_figure
 from viz.roadmap_chart import build_roadmap_figure
@@ -336,14 +338,23 @@ def _matrix_page(story: list, styles: dict[str, ParagraphStyle], scored_use_case
     No separate page heading here: the chart itself already carries the
     title "Matrice valeur × faisabilité" (viz/matrix_chart.py), so adding
     another one above it would duplicate it.
+
+    Shows only the best (highest-priority) use case per process — the same
+    default view as the app — so same-process bubbles don't overlap.
+    Thresholds are relative (portfolio median), computed over the full
+    portfolio even though only the best-per-process subset is plotted, so
+    they reflect the whole analyzed set, not just what's drawn (see
+    docs/decisions.md on LLM central-tendency bias).
     """
-    fig = build_matrix_figure(scored_use_cases)
+    value_threshold, feasibility_threshold = portfolio_thresholds(scored_use_cases, ThresholdMode.RELATIVE)
+    fig = build_matrix_figure(best_per_process(scored_use_cases), value_threshold, feasibility_threshold)
     story.append(_figure_image(fig, display_width_mm=CONTENT_WIDTH_MM, max_height_mm=220, width=1000, scale=2))
     story.append(Spacer(1, 3 * mm))
     story.append(
         Paragraph(
-            "Lecture : plus un cas d'usage est situé en haut à droite (quick win), "
-            "plus il doit être priorisé rapidement.",
+            f"Lecture : plus un cas d'usage est situé en haut à droite (quick win), "
+            f"plus il doit être priorisé rapidement. Seuils effectifs (médiane du portefeuille) : "
+            f"valeur = {value_threshold:.1f}, faisabilité = {feasibility_threshold:.1f}.",
             styles["caption"],
         )
     )

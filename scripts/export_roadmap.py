@@ -8,6 +8,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from core.loader import load_demo_cache, load_processes
+from core.matrix import ThresholdMode, portfolio_thresholds
 from core.roadmap import build_roadmap
 from core.scoring import score_use_cases
 from viz.roadmap_chart import build_roadmap_figure
@@ -23,7 +24,8 @@ def main() -> None:
     processes = {p.name: p for p in load_processes("data/demo_company_fr.csv")}
 
     scored, _ = score_use_cases(use_cases, processes, HOURLY_COST_EUR)
-    planned, _ = build_roadmap(scored)
+    value_threshold, feasibility_threshold = portfolio_thresholds(scored, ThresholdMode.RELATIVE)
+    planned, _ = build_roadmap(scored, value_threshold, feasibility_threshold)
 
     fig = build_roadmap_figure(planned)
 
