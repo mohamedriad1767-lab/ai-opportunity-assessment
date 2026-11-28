@@ -22,7 +22,7 @@ def main() -> None:
 
     company = load_company("data/demo_company_profile_fr.json")
     processes = load_processes("data/demo_company_fr.csv")
-    use_cases, no_fit = load_demo_cache("data/demo_cache/use_cases_fr.json")
+    use_cases, no_fit = load_demo_cache("data/demo_cache/use_cases_fr_reviewed.json")
 
     processes_by_name = {p.name: p for p in processes}
     _, excluded = split_prohibited(use_cases)

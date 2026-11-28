@@ -1,9 +1,12 @@
 """Generate AI use cases for the 12 French demo processes and cache them to disk.
 
 This is a one-time (re-run-on-demand) build step: it calls the real
-Anthropic API once per process and saves the results, so the Streamlit app
-can later show a full demo (ranking, matrix, roadmap, PDF) with NO API key
-and NO live LLM call, by loading data/demo_cache/use_cases_fr.json.
+Anthropic API once per process and saves the raw results, so the Streamlit
+app can later show a full demo (ranking, matrix, roadmap, PDF) with NO API
+key and NO live LLM call. This raw output is never used directly by the
+app: a human reviews it and the corrections are applied on top, producing
+data/demo_cache/use_cases_fr_reviewed.json (see docs/demo_review.md), which
+is what the app and the demo exports actually load.
 
 Output: a JSON list with one entry per process, shaped like a
 GenerationResult (use_cases, no_fit_reason) plus the process_name.

@@ -1,0 +1,652 @@
+[
+  {
+    "process_name": "Saisie des commandes",
+    "use_cases": [
+      {
+        "type": "document_extraction",
+        "description": "Un outil d'extraction qui lit les e-mails et fax de commandes clients, identifie les références produits, les quantités et les informations client, et remplit automatiquement les formulaires de commande dans l'ERP.",
+        "justification": "Cela adresse directement la saisie manuelle et les erreurs de transcription en éliminant la retranscription manuelle et en appliquant une extraction cohérente à chaque commande, réduisant les erreurs de saisie.",
+        "pct_time_saved": 0.55,
+        "quality_impact": 4,
+        "strategic_alignment": 4,
+        "data_quality": 4,
+        "technical_complexity": 3,
+        "adoption_risk": 2,
+        "off_the_shelf": true,
+        "ai_act": "minimal",
+        "gdpr": "indirect",
+        "criteria_rationale": {
+          "quality_impact": "Élimine les erreurs de transcription manuelle et applique un extraction cohérente à chaque champ.",
+          "strategic_alignment": "La saisie rapide et précise des commandes est un élément clé de l'efficacité des ventes et du service client.",
+          "data_quality": "Les e-mails et fax sont disponibles; les formats varient mais les éléments clés (références, quantités, client) sont généralement présents.",
+          "technical_complexity": "OCR + extraction de champs structurés est un pattern bien établi dans les solutions de commande.",
+          "adoption_risk": "Les administrateurs valident toujours la commande avant envoi, donc le changement de flux est minime.",
+          "off_the_shelf": "Des outils d'OCR et d'extraction pour commandes existent sur le marché.",
+          "ai_act": "Traitement interne des commandes sans profilage des clients, risque minimal.",
+          "gdpr": "Traite les informations indirectes du client (références de commande, adresses de livraison)."
+        },
+        "process_name": "Saisie des commandes"
+      },
+      {
+        "type": "classification",
+        "description": "Un classificateur qui évalue le stock disponible en temps réel lors de la saisie et signale les commandes impossibles à livrer intégralement ou partiellement, sans attendre la vérification manuelle ultérieure.",
+        "justification": "Cela adresse l'absence de vérification du stock à la saisie en intégrant une vérification automatique au moment de la création de la commande, réduisant les délais de communication avec les clients et évitant les déceptions.",
+        "pct_time_saved": 0.2,
+        "quality_impact": 3,
+        "strategic_alignment": 4,
+        "data_quality": 3,
+        "technical_complexity": 2,
+        "adoption_risk": 2,
+        "off_the_shelf": true,
+        "ai_act": "minimal",
+        "gdpr": "indirect",
+        "criteria_rationale": {
+          "quality_impact": "Améliore la qualité des engagements clients en alertant immédiatement sur les ruptures de stock.",
+          "strategic_alignment": "La réactivité et la fiabilité des promesses de livraison sont critiques pour le service B2B.",
+          "data_quality": "Le stock ERP est disponible mais peut avoir des délais de synchronisation avec le terrain.",
+          "technical_complexity": "Requête temps réel sur l'inventaire ERP et flagging, relativement simple.",
+          "adoption_risk": "Les administrateurs reçoivent un signal d'alerte mais gardent le contrôle de la décision de négociation.",
+          "off_the_shelf": "Les modules ERP intégrés ou connecteurs tiers offrent cette capacité.",
+          "ai_act": "Vérification automatique d'inventaire sans décision autonome, risque minimal.",
+          "gdpr": "Accède aux données d'inventaire, pas de données sensibles du client."
+        },
+        "process_name": "Saisie des commandes"
+      }
+    ],
+    "no_fit_reason": null
+  },
+  {
+    "process_name": "Génération de devis",
+    "use_cases": [
+      {
+        "type": "document_extraction",
+        "description": "Un outil d'IA qui extrait les spécifications des demandes de devis des clients et les mappe automatiquement aux grilles tarifaires et aux conditions contractuelles stockées, générant les lignes tarifées directement.",
+        "justification": "Cela adresse directement le pain point des recherches tarifaires répétitives en automatisant l'extraction des articles demandés et l'appariement aux tarifs, ce qui réduit le temps de consultation manuelle de tables tarifaires.",
+        "pct_time_saved": 0.35,
+        "quality_impact": 4,
+        "strategic_alignment": 4,
+        "data_quality": 4,
+        "technical_complexity": 3,
+        "adoption_risk": 2,
+        "off_the_shelf": true,
+        "ai_act": "minimal",
+        "gdpr": "indirect",
+        "criteria_rationale": {
+          "quality_impact": "L'extraction automatique et cohérente réduit les erreurs de transcription et de recherche tarifaire par rapport aux consultations manuelles.",
+          "strategic_alignment": "Accélère le traitement des devis et améliore la productivité de l'équipe, aligné sur l'efficacité opérationnelle.",
+          "data_quality": "Les grilles tarifaires et les demandes client sont structurées et disponibles; les PDF de demande peuvent varier en qualité.",
+          "technical_complexity": "Extraction et appariement avec lookup tarifaire, pattern établi avec OCR/NLP standard.",
+          "adoption_risk": "Les devis extraits sont relus avant envoi, le workflow des utilisateurs change peu.",
+          "off_the_shelf": "Des outils d'extraction de documents et de matching tarifaire existent sur le marché.",
+          "ai_act": "Traitement interne de devis sans profilage de clients, risque minimal.",
+          "gdpr": "Traite les données indirectes du client (références de commande, articles) mais pas de données sensibles."
+        },
+        "process_name": "Génération de devis"
+      },
+      {
+        "type": "classification",
+        "description": "Un classifier qui évalue chaque devis généré et marque les demandes de remise comme : « approvable automatiquement », « nécessite approbation » ou « remise hors limites », en fonction des objectifs de marge et des conditions contractuelles.",
+        "justification": "Cela cible le pain point des e-mails d'approbation de remise manuels et le délai lent sur les grosses demandes, en routant automatiquement les remises standards et en signalant uniquement les décisions discréthionnaires.",
+        "pct_time_saved": 0.25,
+        "quality_impact": 3,
+        "strategic_alignment": 4,
+        "data_quality": 4,
+        "technical_complexity": 2,
+        "adoption_risk": 2,
+        "off_the_shelf": true,
+        "ai_act": "minimal",
+        "gdpr": "indirect",
+        "criteria_rationale": {
+          "quality_impact": "Applique les règles de marge de façon cohérente, réduisant les incohérences liées à la fatigue du validateur.",
+          "strategic_alignment": "Accélère l'approbation et l'envoi des devis, réduction critique du délai de traitement mentionné.",
+          "data_quality": "Utilise les objectifs de marge et les conditions contractuelles qui sont bien structurés et disponibles.",
+          "technical_complexity": "Classification sur des champs structurés (marge calculée, type de client, conditions), effort minimal.",
+          "adoption_risk": "Les remises évaluées « hors limites » remonten toujours à un approbateur humain, peu de disruption.",
+          "off_the_shelf": "Classifieurs règle-based ou ML léger pour triage de devis sont des capacités éprouvées.",
+          "ai_act": "Triage interne des demandes de remise sans décision autonome de paiement, risque minimal.",
+          "gdpr": "Données indirectes de client et de contrat; pas de données personnelles sensibles."
+        },
+        "process_name": "Génération de devis"
+      }
+    ],
+    "no_fit_reason": null
+  },
+  {
+    "process_name": "Traitement des factures fournisseurs",
+    "use_cases": [
+      {
+        "type": "document_extraction",
+        "description": "Un outil d'IA qui extrait automatiquement les données clés des factures fournisseurs (numéro de facture, montant, date, fournisseur, lignes d'article) et les structure pour le rapprochement.",
+        "justification": "Cela adresse directement le pain point du rapprochement manuel à trois voies en extrayant les données de facture de manière fiable et cohérente, ce qui accélère le processus de rapprochement et réduit les erreurs manuelles.",
+        "pct_time_saved": 0.35,
+        "quality_impact": 4,
+        "strategic_alignment": 4,
+        "data_quality": 4,
+        "technical_complexity": 3,
+        "adoption_risk": 2,
+        "off_the_shelf": true,
+        "ai_act": "minimal",
+        "gdpr": "indirect",
+        "criteria_rationale": {
+          "quality_impact": "L'extraction cohérente réduit les erreurs de saisie manuelle et améliore la précision du rapprochement.",
+          "strategic_alignment": "Soutient directement le contrôle des coûts et la conformité financière, priorités clés en distribution B2B.",
+          "data_quality": "Les factures fournisseurs sont disponibles mais en formats variés (PDF, images, documents papier scannés).",
+          "technical_complexity": "OCR avec extraction de champs structurés est un pattern bien établi, avec des outils disponibles.",
+          "adoption_risk": "Les données extraites alimentent le processus existant, peu de changement dans le workflow des utilisateurs.",
+          "off_the_shelf": "Plusieurs outils d'OCR et d'extraction de factures matures existent sur le marché.",
+          "ai_act": "Traitement interne des factures fournisseurs sans profilage d'acteurs, risque minimal.",
+          "gdpr": "Traite les données fournisseur et de transaction, considérées comme indirectement personnelles."
+        },
+        "process_name": "Traitement des factures fournisseurs"
+      },
+      {
+        "type": "classification",
+        "description": "Un classifieur qui détecte les factures en double en comparant les numéros de facture, les montants et les fournisseurs par rapport à l'historique des 90 derniers jours.",
+        "justification": "Cela réduit directement le risque de factures en double en flaggant automatiquement les doublons potentiels avant approbation, prévenant les paiements erronés.",
+        "pct_time_saved": 0.2,
+        "quality_impact": 5,
+        "strategic_alignment": 5,
+        "data_quality": 5,
+        "technical_complexity": 2,
+        "adoption_risk": 1,
+        "off_the_shelf": true,
+        "ai_act": "minimal",
+        "gdpr": "indirect",
+        "criteria_rationale": {
+          "quality_impact": "La détection automatique des doublons élimine complètement ce risque, améliorant la qualité des processus de paiement.",
+          "strategic_alignment": "Prévient les pertes financières directes et soutient la conformité — aligné aux priorités critiques.",
+          "data_quality": "Les numéros de facture et montants sont des données structurées, fiables et facilement accessibles via l'ERP.",
+          "technical_complexity": "Un algorithme de déduplication sur des champs structurés est trivial à mettre en place.",
+          "adoption_risk": "Génère simplement une alerte, l'approbateur contrôle toujours la décision finale.",
+          "off_the_shelf": "Les systèmes ERP disposent souvent de fonctionnalités natives de détection de doublons, peu de build personnalisé.",
+          "ai_act": "Détection de doublons administratifs sans implications réglementées, risque minimal.",
+          "gdpr": "Traite les mêmes données fournisseur indirectement personnelles."
+        },
+        "process_name": "Traitement des factures fournisseurs"
+      },
+      {
+        "type": "assistant",
+        "description": "Un assistant IA qui propose les bons de commande et bons de réception correspondants pour chaque facture rapprochée, en utilisant le matching automatique et en signalant les divergences de quantité ou de prix.",
+        "justification": "Cela accélère le rapprochement à trois voies en regroupant automatiquement les documents pertinents et en mettant en évidence les anomalies, ce qui réduit les délais d'approbation.",
+        "pct_time_saved": 0.2,
+        "quality_impact": 4,
+        "strategic_alignment": 4,
+        "data_quality": 4,
+        "technical_complexity": 3,
+        "adoption_risk": 2,
+        "off_the_shelf": false,
+        "ai_act": "minimal",
+        "gdpr": "indirect",
+        "criteria_rationale": {
+          "quality_impact": "L'appariement automatique réduit les erreurs de sélection manuelle des documents correspondants et améliore la cohérence.",
+          "strategic_alignment": "Accélère les approbations et réduit les délais de paiement, supportant l'efficacité opérationnelle.",
+          "data_quality": "Les données des BC, BR et factures sont structurées dans l'ERP, bien que l'intégration avec l'extraction soit requise.",
+          "technical_complexity": "Nécessite l'intégration avec l'ERP et des règles de matching personnalisées basées sur les logiques métier.",
+          "adoption_risk": "Change le workflow en remplaçant une recherche manuelle par une interface assistée, modérément disruptif.",
+          "off_the_shelf": "Peu d'outils standard proposent ce matching spécifique au contexte, nécessite une solution personnalisée.",
+          "ai_act": "Assistance administrative dans le rapprochement financier interne, sans automatisation autonome des paiements.",
+          "gdpr": "Traite les données fournisseur et de transaction indirectement personnelles."
+        },
+        "process_name": "Traitement des factures fournisseurs"
+      }
+    ],
+    "no_fit_reason": null
+  },
+  {
+    "process_name": "Création des bons de commande",
+    "use_cases": [
+      {
+        "type": "assistant",
+        "description": "Un assistant IA qui consolide les catalogues fournisseurs fragmentés, récupère les informations de prix et de délai de livraison en temps réel, et présente les options de sourcing optimales aux acheteurs pour chaque bon de commande.",
+        "justification": "Cet assistant cible directement la douleur des catalogues fournisseurs fragmentés en consolidant et en normalisant l'accès aux données de fournisseurs, éliminant le besoin pour les acheteurs de consulter manuellement plusieurs sources. Il réduit le temps passé à chercher et comparer les options de sourcing.",
+        "pct_time_saved": 0.35,
+        "quality_impact": 4,
+        "strategic_alignment": 4,
+        "data_quality": 3,
+        "technical_complexity": 3,
+        "adoption_risk": 2,
+        "off_the_shelf": true,
+        "ai_act": "minimal",
+        "gdpr": "indirect",
+        "criteria_rationale": {
+          "quality_impact": "Normalise les données de fournisseur et élimine les erreurs de recherche manuelle; améliore la cohérence des sélections.",
+          "strategic_alignment": "Soutient directement l'efficacité des achats et l'optimisation des coûts, une priorité clé en distribution.",
+          "data_quality": "Les catalogues existent mais sont fragmentés; les délais de livraison et prix nécessitent intégration depuis plusieurs sources.",
+          "technical_complexity": "Intégration de sources multiples et génération de synthèses; complexité modérée pour connecter des systèmes hétérogènes.",
+          "adoption_risk": "Les acheteurs restent décisionnaires; l'outil simplifie leur recherche sans changer radicalement le workflow.",
+          "off_the_shelf": "Des outils d'agrégation de catalogues et de sourcing existent sur le marché.",
+          "ai_act": "Aucun profilage ou décision RH; processus interne sans régulation spécifique.",
+          "gdpr": "Traite les données de fournisseur et de stock, indirectement liées aux employés via leurs rôles."
+        },
+        "process_name": "Création des bons de commande"
+      },
+      {
+        "type": "classification",
+        "description": "Un classifier qui évalue automatiquement chaque bon de commande en fonction des seuils de réapprovisionnement (niveaux de stock, prévisions de ventes, délais de livraison) et le classe comme approuvable immédiatement, nécessitant une révision, ou hors politique.",
+        "justification": "Cet classifier cible la douleur des vérifications manuelles des seuils de réapprovisionnement et des approbations par e-mail en remplaçant les contrôles manuels répétitifs par une évaluation automatisée et cohérente, accélérant les cycles d'approbation.",
+        "pct_time_saved": 0.3,
+        "quality_impact": 4,
+        "strategic_alignment": 4,
+        "data_quality": 4,
+        "technical_complexity": 2,
+        "adoption_risk": 2,
+        "off_the_shelf": false,
+        "ai_act": "minimal",
+        "gdpr": "none",
+        "criteria_rationale": {
+          "quality_impact": "Applique les règles de seuil de façon cohérente à chaque bon; élimine les erreurs d'oubli ou de calcul manuel.",
+          "strategic_alignment": "Accélère les approvals et réduit les retards dans le cycle de commande, critique pour la distribution B2B.",
+          "data_quality": "Les niveaux de stock, les prévisions et les délais de livraison sont disponibles dans les systèmes ERP.",
+          "technical_complexity": "Classifier basique sur des données structurées; faible effort de développement.",
+          "adoption_risk": "Les acheteurs restent impliqués pour les cas hors politique; peu de disruption du workflow existant.",
+          "off_the_shelf": "Nécessite une configuration personnalisée des seuils et des règles métier, peu de solutions génériques plug-and-play.",
+          "ai_act": "Classification interne de commandes, sans décision réglementée.",
+          "gdpr": "Ne traite que des données de stock et commande, pas de données personnelles."
+        },
+        "process_name": "Création des bons de commande"
+      }
+    ],
+    "no_fit_reason": null
+  },
+  {
+    "process_name": "Préparation et emballage des commandes",
+    "use_cases": [
+      {
+        "type": "assistant",
+        "description": "Un outil d'IA qui génère automatiquement des listes de prélèvement optimisées en fonction de la disposition physique de l'entrepôt, en regroupant les articles par zone et en proposant un ordre de visite efficace pour minimiser les temps de déplacement.",
+        "justification": "Cet outil répond directement au pain point principal : les temps de déplacement entre les zones. En optimisant l'ordre de prélèvement et en regroupant intelligemment les articles par localisation physique, on réduit les mètres parcourus et donc le temps total de préparation.",
+        "pct_time_saved": 0.35,
+        "quality_impact": 3,
+        "strategic_alignment": 4,
+        "data_quality": 4,
+        "technical_complexity": 3,
+        "adoption_risk": 2,
+        "off_the_shelf": true,
+        "ai_act": "minimal",
+        "gdpr": "none",
+        "criteria_rationale": {
+          "quality_impact": "Améliore la cohérence de l'ordonnancement mais n'élimine pas les décisions manuelles ou les changements de priorité.",
+          "strategic_alignment": "Réduit directement les coûts opérationnels et augmente la productivité de l'entrepôt, priorité clé.",
+          "data_quality": "Le WMS contient déjà la disposition des zones, les emplacements et les quantités; données structurées et fiables.",
+          "technical_complexity": "Algorithmes classiques d'optimisation de routes/regroupement, bien établis et disponibles.",
+          "adoption_risk": "Change simplement le format et l'ordre de la liste; préparateurs acceptent facilement une meilleure organisation.",
+          "off_the_shelf": "Les systèmes WMS modernes proposent déjà cette optimisation; sinon, des outils spécialisés existent.",
+          "ai_act": "Automatisation interne sans profiling ou décision concernant des personnes; risque minimal.",
+          "gdpr": "Pas de données personnelles; données purement opérationnelles.",
+          "revue_humaine": "Type corrigé de generation à assistant : l'outil propose un ordre de prélèvement optimisé à un humain, il ne génère pas de contenu."
+        },
+        "process_name": "Préparation et emballage des commandes"
+      },
+      {
+        "type": "classification",
+        "description": "Un classifier qui détecte les risques d'erreur de prélèvement en temps réel en comparant les données scannées (code-barres) avec le bon de commande, et signale les écarts (mauvais article, mauvaise quantité, mauvaise zone) avant emballage.",
+        "justification": "Cet outil cible les erreurs de prélèvement occasionnelles en détectant les anomalies avant qu'elles ne quittent l'entrepôt, réduisant les retours coûteux et les insatisfactions clients. Il automatise le contrôle qualité manuel.",
+        "pct_time_saved": 0.25,
+        "quality_impact": 4,
+        "strategic_alignment": 4,
+        "data_quality": 4,
+        "technical_complexity": 2,
+        "adoption_risk": 2,
+        "off_the_shelf": true,
+        "ai_act": "minimal",
+        "gdpr": "none",
+        "criteria_rationale": {
+          "quality_impact": "Détecte les erreurs de manière cohérente et systématique; améliore significativement la précision du prélèvement.",
+          "strategic_alignment": "Réduit les retours et les réclamations clients, protégeant la réputation et la rentabilité.",
+          "data_quality": "Le système de codes-barres et le WMS fournissent les données structurées et fiables nécessaires.",
+          "technical_complexity": "Comparaison de données structurées et règles simples; très faible complexité technique.",
+          "adoption_risk": "Les préparateurs acceptent facilement une vérification automatisée qui les aide à éviter les erreurs.",
+          "off_the_shelf": "Les systèmes d'emballage et les WMS modernes incluent déjà cette vérification; existe en standard.",
+          "ai_act": "Vérification d'articles sans décision autonome ni impact sur les personnes; risque minimal.",
+          "gdpr": "Pas de données personnelles; données produits et commandes uniquement."
+        },
+        "process_name": "Préparation et emballage des commandes"
+      }
+    ],
+    "no_fit_reason": null
+  },
+  {
+    "process_name": "Traitement des réclamations clients",
+    "use_cases": [
+      {
+        "type": "document_extraction",
+        "description": "Un outil IA qui extrait automatiquement les informations clés des tickets de réclamation client (numéro de commande, type de produit, description du problème, date de livraison) et les enrichit en interrogeant en parallèle l'historique des commandes et le suivi des livraisons.",
+        "justification": "Cet outil s'attaque directement à la douleur principal : la recherche manuelle des causes racines dans plusieurs systèmes. En extrayant automatiquement les données pertinentes et en les croisant avec l'historique et le suivi, on réduit drastiquement le temps consacré à la navigation manuelle entre systèmes.",
+        "pct_time_saved": 0.4,
+        "quality_impact": 4,
+        "strategic_alignment": 4,
+        "data_quality": 4,
+        "technical_complexity": 3,
+        "adoption_risk": 2,
+        "off_the_shelf": true,
+        "ai_act": "minimal",
+        "gdpr": "sensitive",
+        "criteria_rationale": {
+          "quality_impact": "Extrait les données clés de manière cohérente et enrichit chaque ticket avec l'historique et le suivi, réduisant les omissions manuelles.",
+          "strategic_alignment": "Accélère le temps de résolution, un objectif clé pour le service client et la satisfaction client.",
+          "data_quality": "Les tickets CRM, l'historique des commandes et le suivi des livraisons sont structurés et disponibles dans les systèmes existants.",
+          "technical_complexity": "Extraction standard de texte depuis les tickets plus intégration avec les APIs CRM/commandes, complexité modérée.",
+          "adoption_risk": "Les agents du service client continuent d'examiner et d'agir sur les données extraites, change peu le workflow.",
+          "off_the_shelf": "Les outils de RPA et d'extraction documentaire pour CRM et systèmes d'ordre sont matures et disponibles.",
+          "ai_act": "Traitement interne des réclamations clients sans profiling ni prise de décision autonome concernant le client est un risque minimal.",
+          "gdpr": "Traite des données personnelles indirectes (nom client, adresse, historique de commandes) sensibles mais dans le contexte légitime du traitement des réclamations."
+        },
+        "process_name": "Traitement des réclamations clients"
+      },
+      {
+        "type": "classification",
+        "description": "Un classifieur qui catégorise automatiquement les réclamations (défaut produit, erreur de livraison, colis endommagé, problème de facturation, autre) et attribue une priorité de résolution basée sur la nature du problème et l'historique du client.",
+        "justification": "Cet outil répond au problème du suivi incohérent en standardisant la catégorisation et la priorisation des réclamations, et permet un routage plus rapide vers le bon agent ou le bon département (logistique, qualité produit, finance).",
+        "pct_time_saved": 0.25,
+        "quality_impact": 4,
+        "strategic_alignment": 4,
+        "data_quality": 4,
+        "technical_complexity": 2,
+        "adoption_risk": 2,
+        "off_the_shelf": true,
+        "ai_act": "minimal",
+        "gdpr": "sensitive",
+        "criteria_rationale": {
+          "quality_impact": "Applique une classification uniforme et une priorisation cohérente à chaque réclamation, éliminant les biais du classement manuel.",
+          "strategic_alignment": "Réduit le temps de résolution global et améliore la cohérence du suivi, essentiels pour la satisfaction client et l'efficacité opérationnelle.",
+          "data_quality": "Le texte des tickets, les catégories de produits et l'historique client sont structurés et fiables dans le CRM.",
+          "technical_complexity": "Classifieur standard sur du texte structuré, effort de build faible à modéré.",
+          "adoption_risk": "Les agents reçoivent un routage pré-catégorisé mais gardent l'autonomie décisionnelle ; change minimal du workflow.",
+          "off_the_shelf": "Les classifieurs CRM et de triage de tickets sont une capacité mature et commercialisée.",
+          "ai_act": "Catégorisation et routage interne sans prise de décision autonome concernant le client ou accord/refus de réclamation est un risque minimal.",
+          "gdpr": "Traite des données personnelles sensibles (identification client, historique) mais dans le cadre du traitement des réclamations."
+        },
+        "process_name": "Traitement des réclamations clients"
+      }
+    ],
+    "no_fit_reason": null
+  },
+  {
+    "process_name": "Demandes de statut de commande",
+    "use_cases": [
+      {
+        "type": "assistant",
+        "description": "Un assistant IA qui répond aux demandes de statut de commande en interrogeant en temps réel le système de gestion des commandes et les flux de suivi transporteur, puis synthétisant les informations pour le client.",
+        "justification": "Cela adresse directement le volume élevé d'appels pour des vérifications répétitives et élimine le besoin pour les agents de jongler entre plusieurs systèmes. L'assistant récupère et consolide les données, réduisant le temps d'attente pour les clients et libérant la capacité des agents.",
+        "pct_time_saved": 0.6,
+        "quality_impact": 4,
+        "strategic_alignment": 5,
+        "data_quality": 4,
+        "technical_complexity": 3,
+        "adoption_risk": 2,
+        "off_the_shelf": true,
+        "ai_act": "limited",
+        "gdpr": "indirect",
+        "criteria_rationale": {
+          "quality_impact": "Fournit des réponses cohérentes et à jour en temps réel, éliminant les erreurs d'agents fatigués et les informations obsolètes.",
+          "strategic_alignment": "Réduit directement les temps d'attente clients et libère la capacité du service pour les problèmes complexes, améliorant la satisfaction.",
+          "data_quality": "Le système de gestion des commandes et les flux transporteur sont structurés et en temps réel; données fiables.",
+          "technical_complexity": "Intégration d'API avec le système de commandes et les flux transporteur; orchestration modérée mais bien établie.",
+          "adoption_risk": "Les agents gardent le contrôle sur les escalades complexes; changement mineur à leur flux de travail.",
+          "off_the_shelf": "Des assistants clients B2B pour le suivi de commandes existent sur le marché.",
+          "ai_act": "Assistant client-facing sans profilage ni décisions automatisées sur les individus; risque limité.",
+          "gdpr": "Traite les données de commande et de contact client, indirectement personnelles."
+        },
+        "process_name": "Demandes de statut de commande"
+      }
+    ],
+    "no_fit_reason": null
+  },
+  {
+    "process_name": "Présélection des CV pour les postes ouverts",
+    "use_cases": [
+      {
+        "type": "classification",
+        "description": "Un classificateur qui évalue automatiquement les CV par rapport aux critères de présélection du poste (expérience requise, compétences techniques, formation, localisation) et catégorise les candidats en 'candidat apte', 'candidat à examiner de près' ou 'non conforme'.",
+        "justification": "Cela traite directement les deux problèmes centraux : le volume élevé de candidatures (en filtrant automatiquement les candidats non conformes) et l'incohérence des critères de présélection (en appliquant les mêmes règles à chaque CV). Accélère le processus de présélection en réduisant le temps de traitement manuel.",
+        "pct_time_saved": 0.55,
+        "quality_impact": 4,
+        "strategic_alignment": 4,
+        "data_quality": 4,
+        "technical_complexity": 3,
+        "adoption_risk": 3,
+        "off_the_shelf": true,
+        "ai_act": "high",
+        "gdpr": "sensitive",
+        "criteria_rationale": {
+          "quality_impact": "Applique les critères de manière cohérente à chaque candidature, réduisant les biais et les erreurs d'évaluation manuelle.",
+          "strategic_alignment": "Accélère le recrutement et réduit les délais de pourvoi de postes, aligné avec les priorités RH d'une entreprise de distribution.",
+          "data_quality": "Les CV et les descriptions de poste sont disponibles en format structuré dans le système ATS.",
+          "technical_complexity": "Classification sur du contenu semi-structuré (texte CV + critères) ; nécessite un modèle adapté mais c'est un problème maîtrisé.",
+          "adoption_risk": "Les recruteurs doivent faire confiance aux recommandations du système, ce qui peut créer de la résistance si le filtre initial est trop agressif.",
+          "off_the_sheet": "Plusieurs outils ATS commerciaux (LinkedIn Recruiter, SmartRecruiters, etc.) intègrent déjà des classifieurs de CV.",
+          "ai_act": "Le classement et la sélection des candidats pour les opportunités d'emploi relève de l'annexe III du règlement IA et est classé comme à risque élevé.",
+          "gdpr": "Traitement de données sensibles : donné personnelles des candidats (formation, expérience, localisation, etc.), avec profilage implicite des candidats."
+        },
+        "process_name": "Présélection des CV pour les postes ouverts"
+      }
+    ],
+    "no_fit_reason": null
+  },
+  {
+    "process_name": "Consolidation du reporting de gestion mensuel",
+    "use_cases": [
+      {
+        "type": "document_extraction",
+        "description": "Un outil qui extrait automatiquement les données financières des extraits du grand livre ERP et des fichiers P&L par entité, en consolidant les lignes comptables et les montants dans un format structuré standardisé.",
+        "justification": "Cet outil s'attaque directement à la douleur principale : la consolidation Excel manuelle entre entités. En automatisant l'extraction des chiffres clés depuis les sources ERP, on élimine les erreurs de saisie manuelle et on réduit drastiquement le temps de collecte et de mise en forme des données, qui représente une part importante des 30 heures mensuelles.",
+        "pct_time_saved": 0.4,
+        "quality_impact": 4,
+        "strategic_alignment": 4,
+        "data_quality": 4,
+        "technical_complexity": 3,
+        "adoption_risk": 2,
+        "off_the_shelf": true,
+        "ai_act": "minimal",
+        "gdpr": "indirect",
+        "criteria_rationale": {
+          "quality_impact": "L'extraction automatique élimine les erreurs de copie-collé et les omissions manuelles, améliorant la cohérence et l'exactitude du reporting consolidé.",
+          "strategic_alignment": "La clôture mensuelle fiable est une priorité directe du contrôle de gestion et du respect de calendriers comptables.",
+          "data_quality": "Les données du grand livre ERP et des fichiers P&L sont structurées et disponibles, bien qu'elles proviennent de sources multiples.",
+          "technical_complexity": "L'extraction de données ERP structurées et la fusion de fichiers Excel sont des tâches bien maîtrisées, sans complexité majeure.",
+          "adoption_risk": "Les contrôleurs de gestion gardent la responsabilité de validation, le changement de workflow est modéré et progressif.",
+          "off_the_sheet": "Des outils de consolidation financière standard (incluant extraction OCR ou API ERP) sont disponibles sur le marché.",
+          "ai_act": "Le traitement interne de données comptables sans profilage de personnes reste à risque minimal.",
+          "gdpr": "Les données comptables impliquées sont indirectement personnelles (données d'entité, pas données d'employés)."
+        },
+        "process_name": "Consolidation du reporting de gestion mensuel"
+      },
+      {
+        "type": "assistant",
+        "description": "Un assistant IA qui vérifie automatiquement la cohérence des consolidations (solde des comptes de trésorerie, réconciliation interentités, cohérence des taux de change appliqués) et signale les anomalies ou les écarts seuil pour investigation manuelle.",
+        "justification": "Cet assistant cible le problème de contrôle de version et les incohérences qui ralentissent la clôture. En validant automatiquement les règles de consolidation comptable contre les données extraites, on réduit les allers-retours de correction et on accélère la finalisation du reporting, sans substituer le jugement du contrôleur.",
+        "pct_time_saved": 0.25,
+        "quality_impact": 4,
+        "strategic_alignment": 4,
+        "data_quality": 4,
+        "technical_complexity": 2,
+        "adoption_risk": 1,
+        "off_the_shelf": false,
+        "ai_act": "minimal",
+        "gdpr": "indirect",
+        "criteria_rationale": {
+          "quality_impact": "Les vérifications systématiques d'incohérence réduisent les erreurs de consolidation qui passeraient inaperçues en révision manuelle.",
+          "strategic_alignment": "Accélère la clôture mensuelle en éliminant les boucles de correction répétitives, aligné sur l'objectif de timing.",
+          "data_quality": "Les données consolidées provenant de l'étape d'extraction précédente sont structurées et cohérentes.",
+          "technical_complexity": "L'implémentation des règles de validation comptable est modérée, sans modèle ML complexe requis.",
+          "adoption_risk": "L'assistant propose des alertes sans imposer d'actions, le contrôleur reste maître du processus.",
+          "off_the_shelf": "Les validations comptables spécifiques au groupe nécessitent une configuration métier ; peu de solutions génériques sont adaptées.",
+          "ai_act": "Le contrôle de cohérence comptable sans décision automatisée reste à risque minimal.",
+          "gdpr": "Traitement de données comptables structurées, indirectement personnelles au niveau de l'entité."
+        },
+        "process_name": "Consolidation du reporting de gestion mensuel"
+      }
+    ],
+    "no_fit_reason": null
+  },
+  {
+    "process_name": "Lettres de relance et appels de recouvrement",
+    "use_cases": [
+      {
+        "type": "classification",
+        "description": "Un classifieur qui évalue chaque compte en retard et attribue une priorité de relance (urgente, normale, basse) basée sur l'âge de la dette, l'historique de paiement, les litiges signalés et le dépassement de la limite de crédit.",
+        "justification": "Cela résout directement le problème de priorisation manuelle, qui est actuellement chronophage et incohérente. Le classifieur applique les mêmes critères à chaque compte, éliminant l'arbitraire et permettant à l'équipe de Recouvrement de se concentrer en premier sur les dettes les plus critiques.",
+        "pct_time_saved": 0.3,
+        "quality_impact": 4,
+        "strategic_alignment": 5,
+        "data_quality": 5,
+        "technical_complexity": 2,
+        "adoption_risk": 1,
+        "off_the_shelf": true,
+        "ai_act": "minimal",
+        "gdpr": "sensitive",
+        "criteria_rationale": {
+          "quality_impact": "Applique les critères de risque de manière uniforme, réduisant les omissions et les biais du jugement manuel.",
+          "strategic_alignment": "La priorisation est critique pour le recouvrement efficace et la minimisation de la dépréciation des créances.",
+          "data_quality": "La balance âgée, l'historique des paiements et les litiges sont tous disponibles dans les systèmes ERP standards.",
+          "technical_complexity": "Un classifieur simple sur des données structurées, construction de faible effort.",
+          "adoption_risk": "L'équipe accepte la recommandation de priorité mais reste responsable de la décision finale.",
+          "off_the_shelf": "Les outils de scoring de risque de recouvrement sont disponibles auprès de fournisseurs de solutions de crédit.",
+          "ai_act": "Le scoring automatisé des créances pour l'allocation de ressources est classé haut risque en vertu de l'annexe III de la loi sur l'IA (prise de décisions affectant l'accès au financement).",
+          "gdpr": "Traite des données financières et de comportement de paiement sensibles des clients professionnels.",
+          "revue_humaine": "Débiteurs = entreprises clientes : l'annexe III (point 5) vise la solvabilité des personnes physiques ; prioriser des relances ne conditionne l'accès à aucun crédit."
+        },
+        "process_name": "Lettres de relance et appels de recouvrement"
+      },
+      {
+        "type": "generation",
+        "description": "Un générateur de texte qui rédige automatiquement les lettres de relance en fonction du niveau de priorité, du contexte de la dette et du modèle de paiement du client, en utilisant les modèles de langage et les templates existants.",
+        "justification": "Cela traite la rédaction répétitive, qui consomme beaucoup de temps et génère un résultat prévisible. Le générateur produit un premier brouillon que le collecteur valide et envoie, économisant la rédaction manuelle tout en conservant un contrôle humain sur le ton et la conformité.",
+        "pct_time_saved": 0.35,
+        "quality_impact": 3,
+        "strategic_alignment": 4,
+        "data_quality": 4,
+        "technical_complexity": 3,
+        "adoption_risk": 2,
+        "off_the_shelf": false,
+        "ai_act": "minimal",
+        "gdpr": "sensitive",
+        "criteria_rationale": {
+          "quality_impact": "Produit des lettres formatées et claires, mais la cohérence légale et l'adaptation au contexte du client nécessitent une révision manuelle.",
+          "strategic_alignment": "Accélère le cycle de recouvrement en réduisant les délais de rédaction et de révision.",
+          "data_quality": "Les templates de lettres, les contextes de compte et les historiques de communication sont disponibles mais fragmentés.",
+          "technical_complexity": "La génération de texte exige un fine-tuning sur les modèles de relance légales et métier; intégration aux systèmes de CRM.",
+          "adoption_risk": "Les collecteurs doivent valider et éditer chaque lettre, ce qui représente un changement dans leur flux de travail.",
+          "off_the_shelf": "Les générateurs de texte génériques existent, mais un fine-tuning sur les lettres de recouvrement légalement conformes est nécessaire.",
+          "ai_act": "La génération de contenu destiné à influencer le comportement de paiement entre dans le périmètre limité de la loi sur l'IA (communications automatisées de recouvrement).",
+          "gdpr": "Le contenu généré traite des données financières sensibles et de l'engagement client.",
+          "revue_humaine": "Courriers relus par un humain avant envoi : hors du champ de l'article 50 (chatbots, deepfakes, textes publiés pour informer le public)."
+        },
+        "process_name": "Lettres de relance et appels de recouvrement"
+      }
+    ],
+    "no_fit_reason": null
+  },
+  {
+    "process_name": "Reporting de performance des campagnes",
+    "use_cases": [
+      {
+        "type": "document_extraction",
+        "description": "Un outil d'extraction de données qui consolide automatiquement les exports de plusieurs plateformes publicitaires (Google Ads, Facebook Ads, LinkedIn, etc.) en un format structuré unifié, sans intervention manuelle.",
+        "justification": "Cela adresse directement le pain point de l'export manuel depuis plusieurs plateformes, qui constitue une part significative du temps d'une campagne (estimation : ~90 min sur 240). L'extraction automatisée élimine les erreurs de copier-coller et accélère l'accès aux données brutes.",
+        "pct_time_saved": 0.35,
+        "quality_impact": 4,
+        "strategic_alignment": 3,
+        "data_quality": 4,
+        "technical_complexity": 3,
+        "adoption_risk": 2,
+        "off_the_shelf": true,
+        "ai_act": "minimal",
+        "gdpr": "indirect",
+        "criteria_rationale": {
+          "quality_impact": "Élimine les erreurs manuelles d'export et de transcription entre plateformes, améliorant la précision des données brutes.",
+          "strategic_alignment": "Accélère le reporting de campagnes publicitaires, supportant une priorité marketing de vue en temps réel, mais secondaire à la génération de revenus.",
+          "data_quality": "Les API des plateformes publicitaires et les exports sont stables et bien documentés, avec une structure prévisible.",
+          "technical_complexity": "Intégration d'API publicitaires standard et transformation de données structurées, schéma connu et reproductible.",
+          "adoption_risk": "Les équipes marketing continuent à valider et contextualiser les données, peu de changement de flux.",
+          "off_the_shelf": "Plusieurs outils de consolidation de données publicitaires (par exemple, Supermetrics, Databox) offrent déjà cette capacité.",
+          "ai_act": "Consolidation de données de campagnes sans profilage ou décisions autonomes, risque minimal.",
+          "gdpr": "Les données de prospects du CRM touchent des informations indirectement personnelles, mais pas sensibles au sens RGPD."
+        },
+        "process_name": "Reporting de performance des campagnes"
+      },
+      {
+        "type": "generation",
+        "description": "Un outil de génération qui formate automatiquement les données consolidées en tableaux Excel standardisés avec visualisations et calcule les KPIs récurrents (ROI, coût par conversion, etc.), prêts pour présentation.",
+        "justification": "Cela cible le pain point de la mise en forme récurrente des tableurs, qui consomme une part importante du temps (estimation : ~90 min sur 240). La génération automatisée de rapports standardisés avec KPIs réduit drastiquement le travail manuel de formatage.",
+        "pct_time_saved": 0.3,
+        "quality_impact": 4,
+        "strategic_alignment": 3,
+        "data_quality": 4,
+        "technical_complexity": 2,
+        "adoption_risk": 1,
+        "off_the_shelf": true,
+        "ai_act": "minimal",
+        "gdpr": "indirect",
+        "criteria_rationale": {
+          "quality_impact": "Applique les mêmes formules et mises en forme à chaque rapport, éliminant les erreurs de calcul manuel et garantissant la cohérence.",
+          "strategic_alignment": "Accélère la livraison des insights marketing aux stakeholders, supportant l'efficacité du reporting mais secondaire aux revenus.",
+          "data_quality": "Les données consolidées (après extraction) sont structurées et les formules de KPI sont bien définies dans le contexte marketing.",
+          "technical_complexity": "Génération de rapports à partir de données structurées avec templates standardisés, faible complexité technique.",
+          "adoption_risk": "Les équipes valident et présentent les rapports générés, peu d'impact sur le flux de travail existant.",
+          "off_the_shelf": "Les outils de BI (Tableau, Power BI, Looker) et les générateurs de rapports (Google Data Studio) couvrent déjà ce besoin.",
+          "ai_act": "Génération de rapports internes sur la performance des campagnes, sans décisions autonomes ou profilage, risque minimal.",
+          "gdpr": "Aucune données personnelles identifiantes dans les rapports générés, utilise les données de prospects du CRM de façon indirecte."
+        },
+        "process_name": "Reporting de performance des campagnes"
+      }
+    ],
+    "no_fit_reason": null
+  },
+  {
+    "process_name": "Réinitialisation de mot de passe et demandes d'accès",
+    "use_cases": [
+      {
+        "type": "assistant",
+        "description": "Un assistant IA qui traite les tickets de réinitialisation de mot de passe en extrayant l'identité du demandeur depuis les journaux Active Directory et l'annuaire, en vérifiant son statut employé, et en fournissant au support informatique une vérification d'identité prévalidée avec les étapes suivantes proposées.",
+        "justification": "Cela adresse directement le goulot d'étranglement de vérification d'identité manuelle et répétitive, qui ralentit les 1000 tickets mensuels. L'assistant automatise la capture et la vérification des données, laissant le support informatique approuver ou refuser en quelques secondes plutôt que quelques minutes.",
+        "pct_time_saved": 0.5,
+        "quality_impact": 4,
+        "strategic_alignment": 4,
+        "data_quality": 4,
+        "technical_complexity": 2,
+        "adoption_risk": 1,
+        "off_the_shelf": true,
+        "ai_act": "minimal",
+        "gdpr": "indirect",
+        "criteria_rationale": {
+          "quality_impact": "Élimine les erreurs de vérification manuelle et applique les règles d'identité de façon cohérente.",
+          "strategic_alignment": "Réduit directement le temps de traitement du support informatique, une priorité opérationnelle clé.",
+          "data_quality": "Active Directory et l'annuaire des employés sont structurés et fiables.",
+          "technical_complexity": "L'extraction de données structurées et l'appariement avec l'annuaire sont triviales.",
+          "adoption_risk": "Le support informatique continue à approuver les tickets, avec juste une vérification pré-remplie.",
+          "off_the_shelf": "Les outils de support informatique matures offrent déjà cette prévalidation.",
+          "ai_act": "Vérification d'identité interne sans profilage ou décisions autonomes sur l'accès.",
+          "gdpr": "Traite les données indirectes d'identité des employés (données d'annuaire)."
+        },
+        "process_name": "Réinitialisation de mot de passe et demandes d'accès"
+      },
+      {
+        "type": "classification",
+        "description": "Un classificateur qui catégorise les tickets entrants selon leur type (réinitialisation de mot de passe, demande d'accès simple, demande d'accès complexe multi-systèmes, problème technique) et urgence, afin de les router automatiquement vers la bonne équipe ou file d'attente.",
+        "justification": "Cela cible le problème d'accumulation des demandes hors horaires en routant les tickets simples vers un flux rapide et les demandes complexes vers les spécialistes, sans intervention manuelle à l'entrée.",
+        "pct_time_saved": 0.2,
+        "quality_impact": 3,
+        "strategic_alignment": 3,
+        "data_quality": 4,
+        "technical_complexity": 2,
+        "adoption_risk": 2,
+        "off_the_shelf": true,
+        "ai_act": "minimal",
+        "gdpr": "indirect",
+        "criteria_rationale": {
+          "quality_impact": "Réduit les mauvais routages manuels et les files d'attente désorganisées, avec un gain de cohérence modéré.",
+          "strategic_alignment": "Améliore la gestion des pics hors horaires, supportant la disponibilité du support.",
+          "data_quality": "Le texte des tickets et leurs métadonnées sont disponibles et structurés.",
+          "technical_complexity": "La classification de tickets selon des catégories définies est un cas standard.",
+          "adoption_risk": "Les équipes ajustent leur assignment, peu de disruption au processus.",
+          "off_the_shelf": "Les plateformes de ticketing commerciales offrent déjà cette classification.",
+          "ai_act": "Routage interne de tickets sans profiling ou restriction d'accès autonome.",
+          "gdpr": "Traite les données indirectes de demandes d'employés."
+        },
+        "process_name": "Réinitialisation de mot de passe et demandes d'accès"
+      }
+    ],
+    "no_fit_reason": null
+  }
+]

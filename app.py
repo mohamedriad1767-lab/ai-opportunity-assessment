@@ -36,7 +36,10 @@ DEMO_USE_CASES_PATH = "data/phase0_use_cases.json"
 # so a visitor without an API key sees a full, pre-computed demo immediately.
 DEMO_COMPANY_FR_PATH = "data/demo_company_profile_fr.json"
 DEMO_PROCESSES_FR_PATH = "data/demo_company_fr.csv"
-DEMO_CACHE_FR_PATH = "data/demo_cache/use_cases_fr.json"
+DEMO_CACHE_FR_PATH = "data/demo_cache/use_cases_fr_reviewed.json"
+DEMO_REVIEW_LOG_URL = (
+    "https://github.com/mohamedriad1767-lab/ai-opportunity-assessment/blob/main/docs/demo_review.md"
+)
 
 AXIS_LABELS = {
     "value": "Valeur",
@@ -259,6 +262,10 @@ def render_processus_tab() -> None:
 def render_cas_usage_tab() -> None:
     """AI generation / demo loading, editable criteria table, no-fit and excluded lists."""
     st.header("Cas d'usage IA")
+    st.caption(
+        "Démo : propositions du LLM revues par un humain — "
+        f"[voir le journal des corrections]({DEMO_REVIEW_LOG_URL})"
+    )
     api_key = os.environ.get("ANTHROPIC_API_KEY")
 
     col1, col2 = st.columns(2)

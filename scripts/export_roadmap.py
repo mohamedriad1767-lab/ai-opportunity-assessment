@@ -19,7 +19,7 @@ HOURLY_COST_EUR = 35
 def main() -> None:
     sys.stdout.reconfigure(encoding="utf-8")
 
-    use_cases, _ = load_demo_cache("data/demo_cache/use_cases_fr.json")
+    use_cases, _ = load_demo_cache("data/demo_cache/use_cases_fr_reviewed.json")
     processes = {p.name: p for p in load_processes("data/demo_company_fr.csv")}
 
     scored, _ = score_use_cases(use_cases, processes, HOURLY_COST_EUR)
